@@ -1,5 +1,5 @@
 
-- ²»ÇÈ
+- acoustic wave
 - shock tube
 - RT
 - KH
