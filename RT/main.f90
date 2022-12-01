@@ -1,11 +1,11 @@
 5 module commons
       implicit none
       integer::nhy
-      integer,parameter::nhymax=20000
+      integer,parameter::nhymax=100000
       real(8)::time,dt
       data time / 0.0d0 /
-      real(8),parameter:: timemax=5.0d0
-      real(8),parameter:: dtout=1.0d-2
+      real(8),parameter:: timemax=20.0d0
+      real(8),parameter:: dtout=1.0d-1
 
       integer,parameter::ngridi=150
       integer,parameter::ngridj= 50
@@ -985,7 +985,7 @@ end module eosmod
       enddo
       close(unitout)
 
-      write(6,*) "gp",gp(is,js,ks)
+!      write(6,*) "gp",gp(is,js,ks)
       write(6,*) "output:",nout,time
 
       nout=nout+1
