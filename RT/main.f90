@@ -200,39 +200,46 @@ end module eosmod
       implicit none
       integer::i,j,k
 
+!reflection
       k=ks
       do j=1,jn-1
-      do i=1,mgn
-           d(i,j,k) =  d(ie-mgn+i,j,k)
-          ei(i,j,k) = ei(ie-mgn+i,j,k)
-          v1(i,j,k) = v1(ie-mgn+i,j,k)
-          v2(i,j,k) = v2(ie-mgn+i,j,k)
-          v3(i,j,k) = v3(ie-mgn+i,j,k)
+      do i=1,mgn 
+           d(is-i,j,k) =   d(is+i-1,j,k)
+          ei(is-i,j,k) =  ei(is+i-1,j,k)
+          v1(is-i,j,k) = -v1(is+i-1,j,k)
+          v2(is-i,j,k) =  v2(is+i-1,j,k)
+          v3(is-i,j,k) =  v3(is+i-1,j,k)
+          gp(is-i,j,k) =  gp(is+i-1,j,k)
       enddo
       enddo
 
+!reflection
       k=ks
       do j=1,jn-1
       do i=1,mgn
-           d(ie+i,j,k) =  d(is+i-1,j,k)
-          ei(ie+i,j,k) = ei(is+i-1,j,k)
-          v1(ie+i,j,k) = v1(is+i-1,j,k)
-          v2(ie+i,j,k) = v2(is+i-1,j,k)
-          v3(ie+i,j,k) = v3(is+i-1,j,k)
+           d(ie+i,j,k) =   d(ie-i+1,j,k)
+          ei(ie+i,j,k) =  ei(ie-i+1,j,k)
+          v1(ie+i,j,k) = -v1(ie-i+1,j,k)
+          v2(ie+i,j,k) =  v2(ie-i+1,j,k)
+          v3(ie+i,j,k) =  v3(ie-i+1,j,k)
+          gp(ie+i,j,k) =  gp(ie-i+1,j,k)
       enddo
       enddo
 
+! periodic
       k=ks
       do i=1,in-1
       do j=1,mgn
-           d(i,j,k) =  d(i,je-mgn+j,k)
-          ei(i,j,k) = ei(i,je-mgn+j,k)
-          v1(i,j,k) = v1(i,je-mgn+j,k)
-          v2(i,j,k) = v2(i,je-mgn+j,k)
-          v3(i,j,k) = v3(i,je-mgn+j,k)
+           d(i,js-j,k) =  d(i,je-j+1,k)
+          ei(i,js-j,k) = ei(i,je-j+1,k)
+          v1(i,js-j,k) = v1(i,je-j+1,k)
+          v2(i,js-j,k) = v2(i,je-j+1,k)
+          v3(i,js-j,k) = v3(i,je-j+1,k)
+          gp(i,js-j,k) = gp(i,je-j+1,k)
       enddo
       enddo
 
+! periodic
       k=ks
       do i=1,in-1
       do j=1,mgn
@@ -241,6 +248,7 @@ end module eosmod
           v1(i,je+j,k) = v1(i,js+j-1,k)
           v2(i,je+j,k) = v2(i,js+j-1,k)
           v3(i,je+j,k) = v3(i,js+j-1,k)
+          gp(i,je+j,k) = gp(i,js+j-1,k)
       enddo
       enddo
 
