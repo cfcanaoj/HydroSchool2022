@@ -459,7 +459,7 @@
      &                        -leftpr(nve3,i,j,k)*leftpr(nbm1,i,j,k)
          leftco(mfbp,i,j,k) = 0.0d0  ! psi
      
-         css =(gam*(gam-1.0d0)*leftpr(nene,i,j,k))**2
+         css =(gam*(gam-1.0d0)*leftpr(nene,i,j,k))
          cts =  css  !c_s^2*c_a^2
      &                       +( leftpr(nbm1,i,j,k)**2
      &                         +leftpr(nbm2,i,j,k)**2
@@ -517,7 +517,7 @@
          rigtco(mfbw,i,j,k) =  rigtpr(nbm3,i,j,k)*rigtpr(nve1,i,j,k)
      &                        -rigtpr(nve3,i,j,k)*rigtpr(nbm1,i,j,k)
          rigtco(mfbp,i,j,k) = 0.0d0  ! b_z
-         css =(gam*(gam-1.0d0)*rigtpr(nene,i,j,k))**2
+         css =(gam*(gam-1.0d0)*rigtpr(nene,i,j,k))
          cts =  css  !c_s^2*c_a^2
      &                       +( rigtpr(nbm1,i,j,k)**2
      &                         +rigtpr(nbm2,i,j,k)**2
@@ -634,7 +634,7 @@
      &                        -leftpr(nve3,i,j,k)*leftpr(nbm2,i,j,k)
          leftco(mfbp,i,j,k) = 0.0d0  ! psi
      
-         css =(gam*(gam-1.0d0)*leftpr(nene,i,j,k))**2
+         css =(gam*(gam-1.0d0)*leftpr(nene,i,j,k))
          cts =  css  !c_s^2*c_a^2
      &                       +( leftpr(nbm1,i,j,k)**2
      &                         +leftpr(nbm2,i,j,k)**2
@@ -689,7 +689,7 @@
      &                        -rigtpr(nve3,i,j,k)*rigtpr(nbm2,i,j,k)
          rigtco(mfbp,i,j,k) = 0.0d0  ! psi
      
-         css =(gam*(gam-1.0d0)*rigtpr(nene,i,j,k))**2
+         css =(gam*(gam-1.0d0)*rigtpr(nene,i,j,k))
          cts =  css  !c_s^2*c_a^2
      &                       +( rigtpr(nbm1,i,j,k)**2
      &                         +rigtpr(nbm2,i,j,k)**2
@@ -1065,7 +1065,7 @@
       do k=ks,ke
       do j=js,je
       do i=is,ie
-            css  = (gam*svc(npre,i,j,k)/ svc(nden,i,j,k))**2
+            css  = (gam*svc(npre,i,j,k)/ svc(nden,i,j,k))
             cts  = css ! cs^2+c_a^2
      &          + (svc(nbm1,i,j,k)**2+svc(nbm2,i,j,k)**2+svc(nbm3,i,j,k)**2)/svc(nden,i,j,k)
             cms  = sqrt((cts +sqrt(cts**2
