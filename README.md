@@ -10,5 +10,5 @@
 
 # Cheat sheets
     
-    git clone git@github.com:cfcanaoj/HydroSchool022 test
+    git clone git@github.com:cfcanaoj/HydroSchool2022 test
     
