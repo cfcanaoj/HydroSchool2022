@@ -1,4 +1,4 @@
-      module commons
+5 module commons
       implicit none
       integer::nhy
       integer,parameter::nhymax=20000
@@ -948,59 +948,36 @@ end module eosmod
       use commons
       implicit none
       integer::i,j,k
-      character(20),parameter::dirname="bindata/"
+      character(20),parameter::dirname="xydata/"
       character(40)::filename
       real(8),save::tout
-      data tout / 0.0d0 /
+      data tout / 0.0d0 / 
       integer::nout
       data nout / 1 /
-      integer,parameter:: unitout=17
-      integer,parameter:: unitbin=13
-      integer,parameter:: gs=1
-      integer,parameter:: nvar=5
-      real(8)::x1out(is-gs:ie+gs,2)
-      real(8)::x2out(js-gs:je+gs,2)
-      real(8)::hydout(is-gs:ie+gs,js-gs:je+gs,ks,nvar)
-
-      logical, save:: is_inited
-      data is_inited /.false./
-
-      if (.not. is_inited) then
-         call makedirs("bindata")
-         is_inited =.true.
-      endif
+      integer,parameter::unitout=13
 
       if(time .lt. tout+dtout) return
 
-      write(filename,'(a3,i5.5,a4)')"unf",nout,".dat"
-      filename = trim(dirname)//filename
+      write(filename,'(a2,i5.5,a4)')"Sc",nout,".xss"
 
-      open(unitout,file=filename,status='replace',form='formatted')
-      write(unitout,*) "# ",time,dt
-      write(unitout,*) "# ",ngridi,gs
-      write(unitout,*) "# ",ngridj,gs
+      filename = trim(dirname)//filename
+      open(unitout,file=filename,status='replace',form='formatted') 
+
+      write(unitout,'(1a,1(1x,F5.2))') "# ",time
+      k=ks
+!      do j=js,je
+!      do i=is,ie
+      do j=1,jn-1
+      do i=1,in-1
+         write(unitout,'(12(1x,E15.6e3))') x1b(i),x2b(j)              & !  2 
+     &                                 , d(i,j,k), p(i,j,k),gp(i,j,k) & !  5
+     &                                 ,v1(i,j,k),v2(i,j,k),v3(i,j,k)   !  8
+      enddo
+         write(unitout,*)
+      enddo
       close(unitout)
 
-      x1out(is-gs:ie+gs,1) = x1b(is-gs:ie+gs)
-      x1out(is-gs:ie+gs,2) = x1a(is-gs:ie+gs)
-
-      x2out(is-gs:ie+gs,1) = x2b(is-gs:ie+gs)
-      x2out(is-gs:ie+gs,2) = x2a(is-gs:ie+gs)
-
-      hydout(is-gs:ie+gs,js-gs:je+gs,ks,1) =  d(is-gs:ie+gs,js-gs:je+gs,ks)
-      hydout(is-gs:ie+gs,js-gs:je+gs,ks,2) = v1(is-gs:ie+gs,js-gs:je+gs,ks)
-      hydout(is-gs:ie+gs,js-gs:je+gs,ks,3) = v2(is-gs:ie+gs,js-gs:je+gs,ks)
-      hydout(is-gs:ie+gs,js-gs:je+gs,ks,4) = v3(is-gs:ie+gs,js-gs:je+gs,ks)
-      hydout(is-gs:ie+gs,js-gs:je+gs,ks,5) =  p(is-gs:ie+gs,js-gs:je+gs,ks)
-
-      write(filename,'(a3,i5.5,a4)')"bin",nout,".dat"
-      filename = trim(dirname)//filename
-      open(unitbin,file=filename,status='replace',form='binary') 
-      write(unitbin) x1out(:,:)
-      write(unitbin) x2out(:,:)
-      write(unitbin) hydout(:,:,:,:)
-      close(unitbin)
-
+      write(6,*) "gp",gp(is,js,ks)
       write(6,*) "output:",nout,time
 
       nout=nout+1
