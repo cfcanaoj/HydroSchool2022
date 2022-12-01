@@ -1549,9 +1549,10 @@ end module eosmod
       end subroutine Output
 
       subroutine makedirs(outdir)
-      character(len=*), intent(in) :: outdir
-      character(len=256) command
-      write(command, *) 'if [ ! -d ', trim(outdir), ' ]; then mkdir -p ', trim(outdir), '; fi'
-      write(*, *) trim(command)
-      call system(command)
+        implicit none
+        character(len=*), intent(in) :: outdir
+        character(len=256) command
+        write(command, *) 'if [ ! -d ', trim(outdir), ' ]; then mkdir -p ', trim(outdir), '; fi'
+        write(*, *) trim(command)
+        call system(command)
       end subroutine makedirs
