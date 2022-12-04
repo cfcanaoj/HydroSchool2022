@@ -1,0 +1,48 @@
+%------------------------------------------------------------
+\chapter{ Pythonによるデータの可視化 (動画作成)}
+%------------------------------------------------------------
+
+
+Pythonはスクリプト言語の一種で，各種ライブラリが充実しているため，
+シミュレーション結果の解析や可視化を手軽に行うことができ，天文学の分野でも広く使われている。
+この節ではデータ解析でよく用いられる{\ttfamily Numpy} \citep{Numpy}と，可視化ライブラリである{\ttfamily Matplotlib} \citep{Matplotlib}
+の使い方を簡単に説明する。
+
+\begin{itemize}
+    \item {\ttfamily Numpy} \\
+        Pythonの処理速度は，FortranやC言語に比べて非常に遅く，Pythonの配列に当たるリストやタプルを使って
+データ解析をおこなうことは困難である。
+{\ttfamily Numpy}は，内部でFortranやC言語で実装されているため，処理が遅いという欠点を克服する，配列処理に特化したライブラリである。
+
+\item {\ttfamily Matplotlib} \\
+    Python用の可視化ツール。昨今では多くの論文の図が{\ttfamily Matplotlib}を使って作成されている。
+\end{itemize}
+
+ここでは，サンプルプログラムを元に基本的な使い方を解説するが，{\ttfamily numpy}と{\ttfamily matplotlib}の機能を全て網羅できないし，
+私自身一部の機能しか知らないので，詳しくは解説書などを参照してほしい。
+
+
+\section{環境整備}
+
+CfCAで提供している{\ttfamily virtualbox}にすでに{\ttfamily anaconda3}がインストールされている。
+
+\section{1次元データの解析と可視化}
+
+移流方程式を使ったシミュレーション結果の解析用サンプルプログラム「{\ttfamily adv\_data\_analysis.py}」を提供している。
+$U$の空間分布のスナップショット名は「{\ttfamily adv?????.dat}」である。「？」には数字が入り，連番となっている。
+
+\lstinputlisting[]{adv_plot.py}
+
+\begin{itemize}
+    \item 1行目：\fbox{\ttfamily import numpy as np}は，{\ttfamily numpy}をロードして，{\ttfamily np}と呼びますよ，という意味。
+    \item 4行目：\fbox{\ttfamily for istep in range(100):}は，{\ttfamily istep}を0から99までループする。
+        Fortranで言うと\fbox{\ttfamily do istep=0,99}，
+        C言語で言うと\fbox{\ttfamily for(istep=0; istep<100; istep++)}，
+
+\end{itemize}
+
+
+\section{2次元データの解析と可視化}
+
+
+

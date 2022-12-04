@@ -1,0 +1,101 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%      This is thesis.tex.  You have to  put this file in       % 
+%              the same directory with your thesis files.       %
+%                Written by M. Imran 2001/06/18                 % 
+%                 No Copyright for this file                    % 
+%                 Save your time and enjoy it                   % 
+%                                                               % 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass{cfcadocument}
+%\documentclass{jsbook}
+%\documentclass[a4j]{report}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%GRAPHICS
+\usepackage[dvipdfm]{graphicx}
+\usepackage{ascmac,color}
+\usepackage{listings,jlisting}
+%% uncommand the following line to print equation labels next to
+%% equation numbers. 
+%\usepackage{showlabel}
+
+%\makeatletter
+%\long\def\@makecaption#1#2{%
+%  \small%% add this line
+%  \vskip\abovecaptionskip
+%  \sbox\@tempboxa{#1: #2}%
+%  \ifdim \wd\@tempboxa >\hsize
+%  #1: #2\par
+%  \else
+%  \global \@minipagefalse
+%  \hb@xt@\hsize{\hfil\box\@tempboxa\hfil}%
+%  \fi
+%  \vskip\belowcaptionskip}
+%\makeatother
+
+\newcommand{\ttf}[1]{{\ttfamily $#1$}}
+
+%% The following is to control the format of your thesis
+%\usepackage[round]{natbib}
+%\usepackage[numbers,sort&compress]{natbib}
+\usepackage[round,sort&compress]{natbib}
+\bibliographystyle{plainnat}
+%\bibliographystyle{abbvnat}
+\input{format}
+%\input{newcommand}
+
+%% File to be included while running latex.
+%\includeonly{Introduction,summary,appendix}
+
+%\definecolor{OliveGreen}{cmyk}{0.64,0,0.95,0.40}
+\definecolor{OliveGreen}{rgb}{1.0,0,0.0}
+\definecolor{colFunc}{rgb}{1,0.07,0.54}
+\definecolor{CadetBlue}{cmyk}{0.62,0.57,0.23,0}
+\definecolor{Brown}{rgb}{0,0.0,1}
+\definecolor{colID}{rgb}{0.63,0.44,0}
+ 
+\lstset{
+       language=python,%プログラミング言語によって変える。
+%       basicstyle={\ttfamily\bf\small},
+       basicstyle={\bf\ttfamily\footnotesize},
+%       basicstyle={\ttfamily\scriptsize},
+       keywordstyle={\color{OliveGreen}},
+       showstringspaces=false,
+       %[2][3]はプログラミング言語によってあったり，なかったり
+%       keywordstyle={[2]\color{colFunc}},
+%       keywordstyle={[3]\color{CadetBlue}},%
+       commentstyle={\color{Brown}},
+       %identifierstyle={\color{colID}},
+       stringstyle=\color{magenta},
+       tabsize=2,
+       frame=trbl,
+       numbers=left,
+%       numberstyle={\ttfamily\small},
+       numberstyle={\ttfamily\footnotesize},
+       breaklines=true,%折り返し
+%       backgroundcolor={\color[gray]{0.95}},
+       captionpos=b
+}
+
+\begin{document}
+
+%% Front page of thesis
+\input{frontpage}
+
+%% Main text
+% set page number starts from 1
+\pagenumbering{arabic}
+\setcounter{page}{1}
+%\include{Introduction}
+
+%\include{advection}
+\include{HD}
+\include{MHD}
+%\include{gnuplot}
+%\include{matplotlib}
+
+%\appendix
+%\include{appendix}
+%
+%\bibliography{main}
+
+\end{document}

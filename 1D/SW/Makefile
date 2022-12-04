@@ -38,7 +38,7 @@ fc=ifort -extend-source
 fopt=-g -traceback -O2
 #fopt=-g -traceback -check all -fpe0
 
-${exe}: main.F
+${exe}: main.f90
 	${fc} ${fopt} $< -o ${exe}
 
 #################
