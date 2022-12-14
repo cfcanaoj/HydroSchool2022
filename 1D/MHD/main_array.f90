@@ -33,27 +33,31 @@
 
       real(8),dimension(in)::x1a,x1b
 ! arrays of the conserved variables
-      real(8),dimension(in) :: d,et,mv
+      real(8),dimension(in) :: d,et
+      real(8),dimension(in,3) :: mv
 ! arrays of the primitive variables
-      real(8),dimension(in) :: p,v
+      real(8),dimension(in) :: p
+      real(8),dimension(in,3) :: v
 
-      real(8),dimension(in) :: dflux, mvflux, etflux
+      real(8),dimension(in,3) :: B
+
+      real(8),dimension(in) :: dflux, etflux
+      real(8),dimension(in,3) :: mvflux, bflux
 
 
       write(6,*) "setup grids and initial condition"
       call GenerateGrid(x1a, x1b)
-      call GenerateProblem(d, v, p)
-      call ConsvVariable(d, v, p, et, mv)
-!      write(6,*) "entering main loop"
-      call Output( x1a, x1b, d, v, p )
+      call GenerateProblem(x1b, d, v, p, B)
+      call ConsvVariable(d, v, p, B, et, mv)
+      call Output( x1a, x1b, d, v, p, B )
 ! main loop
                                   write(6,*)"step","time","dt"
       mloop: do ntime=1,ntimemax
-         call TimestepControl(x1a, d, v, p)
+         call TimestepControl(x1a, d, v, p, B)
          if( time + dt > timemax ) dt = timemax - time
 !         if(mod(ntime,100) .eq. 0 ) write(6,*)ntime,time,dt
-         call BoundaryCondition(d,v,p)
-         call NumericalFlux(d, v, p, dflux, mvflux, etflux)
+         call BoundaryCondition(d,v,p,B)
+         call NumericalFlux(d, v, p, B, dflux, mvflux, etflux, Bflux)
          call UpdateConsv( dflux, mvflux, etflux, d, mv, et )
          call PrimVariable( d, mv, et, v, p )
          time=time+dt
@@ -84,12 +88,13 @@ contains
       return
       end subroutine GenerateGrid
 
-      subroutine GenerateProblem(d, v, p)
+      subroutine GenerateProblem(x1b, d, v, p, B)
       use commons
       use eosmod
       implicit none
       integer::i
-      real(8), intent(out) :: d(:), v(:), p(:)
+      real(8), intent(in ) :: x1b(:)
+      real(8), intent(out) :: d(:), B(:,:), v(:,:), p(:)
       real(8) :: rho1,rho2,Lsm,u1,u2
       data rho1  /  1.0d0 /
       data rho2  /  2.0d0 /
@@ -103,12 +108,24 @@ contains
       do i=is,ie
          if( x1b(i) < 0.0d0 ) then 
              d(i) = 1.0d0
-             v(i) = 0.0d0
+             v(i,1) = 0.0d0
+             v(i,2) = 0.0d0
+             v(i,3) = 0.0d0
              p(i) = 1.0d0
+
+             B(i,1) = 0.75d0
+             B(i,2) = 1.0d0
+             B(i,3) = 0.0d0
          else 
              d(i) = 0.125d0
-             v(i) = 0.0d0
+             v(i,1) = 0.0d0
+             v(i,2) = 0.0d0
+             v(i,3) = 0.0d0
              p(i) = 0.1d0
+
+             B(i,1) = 0.75d0
+             B(i,2) = -1.0d0
+             B(i,3) = 0.0d0
          endif
       enddo
 
@@ -118,10 +135,10 @@ contains
       return
       end subroutine GenerateProblem
 
-      subroutine BoundaryCondition(d,v,p)
+      subroutine BoundaryCondition(d,v,p,B)
       use commons
       implicit none
-      real(8), intent(out) :: d(:), v(:), p(:)
+      real(8), intent(out) :: d(:), v(:,:), p(:), B(:,:)
       integer::i
 
       do i=1,mgn
@@ -129,8 +146,13 @@ contains
 !          v(i) = v(ie-mgn+i)
 !          p(i) = p(ie-mgn+i)
           d(is-i)  = d(is-1+i)
-          v(is-i)  = v(is-1+i)
+          v(is-i,1)  = v(is-1+i,1)
+          v(is-i,2)  = v(is-1+i,2)
+          v(is-i,3)  = v(is-1+i,3)
           p(is-i)  = p(is-1+i)
+          B(is-i,1)  = B(is-1+i,1)
+          B(is-i,2)  = B(is-1+i,2)
+          B(is-i,3)  = B(is-1+i,3)
       enddo
 
       do i=1,mgn
@@ -139,24 +161,33 @@ contains
 !          p(ie+i) = p(is+i-1)
 
           d(ie+i) =  d(ie-i+1)
-          v(ie+i) = v(ie-i+1)
+          v(ie+i,1) = v(ie-i+1,1)
+          v(ie+i,2) = v(ie-i+1,2)
+          v(ie+i,3) = v(ie-i+1,3)
           p(ie+i) = p(ie-i+1)
+          B(ie+i,1) = B(ie-i+1,1)
+          B(ie+i,2) = B(ie-i+1,2)
+          B(ie+i,3) = B(ie-i+1,3)
       enddo
 
       return
       end subroutine BoundaryCondition
 !
-      subroutine ConsvVariable(d, v, p, et, mv)
+      subroutine ConsvVariable(d, v, p, B, et, mv)
       use commons
       use eosmod
       implicit none
-      real(8), intent(in) :: d(:), v(:), p(:)
-      real(8), intent(out) :: et(:), mv(:)
+      real(8), intent(in) :: d(:), v(:,:), p(:), B(:,:)
+      real(8), intent(out) :: et(:), mv(:,:)
       integer::i
 
       do i=is,ie
-          et(i)  = 0.5d0*d(i)*v(i)**2 + p(i)/(gam - 1.0d0)
-          mv(i) = d(i)*v(i)
+          et(i)  = 0.5d0*d(i)*( v(i,1)**2 + v(i,2)**2 + v(i,3)**2 )  &
+                 + 0.5d0*( B(i,1)**2 + B(i,2)**2 + B(i,3)**2 ) &
+                 + p(i)/(gam - 1.0d0)
+          mv(i,1) = d(i)*v(i,1)
+          mv(i,2) = d(i)*v(i,2)
+          mv(i,3) = d(i)*v(i,3)
       enddo
       
       return
@@ -184,22 +215,23 @@ contains
       return
       end subroutine PrimVariable
 
-      subroutine TimestepControl(x1a, d, v, p)
+      subroutine TimestepControl(x1a, d, v, p, B)
       use commons
       use eosmod
       implicit none
-      real(8), intent(in) :: x1a(:), d(:), v(:), p(:)
+      real(8), intent(in) :: x1a(:), d(:), v(:,:), p(:), B(:,:)
       real(8)::dtl1
       real(8)::dtl2
       real(8)::dtl3
       real(8)::dtlocal
-      real(8)::dtmin
+      real(8)::dtmin, cf
       integer::i
 
       dtmin=1.0d90
 
       do i=is,ie
-         dtlocal =(x1a(i+1)-x1a(i))/(abs(v(i)) + dsqrt(gam*p(i)/d(i)))
+         cf = dsqrt(( gam*p(i) + B(i,1)**2 + B(i,2)**2 + B(i,3)**2 )/d(i))
+         dtlocal =(x1a(i+1)-x1a(i))/(abs(v(i,1)) + cf )
          if(dtlocal .lt. dtmin) dtmin = dtlocal
       enddo
 
@@ -281,46 +313,72 @@ contains
 !      return
 !      end subroutine MClimiter
 !
-      subroutine NumericalFlux(d, v, p, dflux, mvflux, etflux)
+      subroutine NumericalFlux(d, v, p, B, dflux, mvflux, etflux, Bflux)
       use commons, only: is, ie, in
       implicit none
       integer::i
-      real(8), intent(in) :: d(:), v(:), p(:)
-      real(8), intent(out) :: dflux(:), mvflux(:), etflux(:)
+      real(8), intent(in) :: d(:), v(:,:), p(:), B(:,:)
+      real(8), intent(out) :: dflux(:), mvflux(:,:), etflux(:), Bflux(:,:)
       real(8),dimension(in):: dl,dr
-      real(8),dimension(in):: vl,vr
-      real(8),dimension(in):: pl,pr
-      real(8),dimension(3):: flux
-      real(8) :: ddm, ddp, dvm, dvp, dpm, dpp
-      real(8) :: ddmon, dvmon, dpmon
+      real(8),dimension(in,8):: Wl,Wr
+      real(8),dimension(8):: flux
+      real(8) :: dWm(8), dWp(8), dWmon(8)
 
       do i=is-1,ie+1
-         ddp = d(i+1) - d(i)
-         ddm = d(i) - d(i-1)
-         call vanLeer(ddp,ddm,ddmon)
+         dWp(1) = d(i+1) - d(i)
+         dWm(1) = d(i) - d(i-1)
 
-         dvp = v(i+1) - v(i)
-         dvm = v(i) - v(i-1)
-         call vanLeer(dvp,dvm,dvmon)
+         dWp(2) = v(i+1,1) - v(i,1)
+         dWm(2) = v(i,1) - v(i-1,1)
 
-         dpp = p(i+1) - p(i)
-         dpm = p(i) - p(i-1)
-         call vanLeer(dpp,dpm,dpmon)
+         dWp(3) = v(i+1,2) - v(i,2)
+         dWm(3) = v(i,2) - v(i-1,2)
 
+         dWp(4) = v(i+1,3) - v(i,3)
+         dWm(4) = v(i,3) - v(i-1,3)
+
+         dWp(5) = p(i+1,2) - p(i,2)
+         dWm(5) = p(i,2) - p(i-1,2)
+
+         dWp(6) = B(i+1,1) - B(i,1)
+         dWm(6) = B(i,1) - B(i-1,1)
+
+         dWp(7) = B(i+1,2) - B(i,2)
+         dWm(7) = B(i,2) - B(i-1,2)
+
+         dWp(8) = B(i+1,3) - B(i,3)
+         dWm(8) = B(i,3) - B(i-1,3)
+
+         call vanLeer(dWp,dWm,dWmon)
 
          dl(i+1) = d(i) + 0.5d0*ddmon*0.0d0
          dr(i  ) = d(i) - 0.5d0*ddmon*0.0d0
 
-         vl(i+1) = v(i) + 0.5d0*dvmon*0.0d0
-         vr(i  ) = v(i) - 0.5d0*dvmon*0.0d0
+         vl(i+1,1) = v(i,1) + 0.5d0*dvmon1*0.0d0
+         vr(i  ,1) = v(i,1) - 0.5d0*dvmon1*0.0d0
+
+         vl(i+1,2) = v(i,2) + 0.5d0*dvmon2*0.0d0
+         vr(i  ,2) = v(i,2) - 0.5d0*dvmon2*0.0d0
+
+         vl(i+1,3) = v(i,3) + 0.5d0*dvmon3*0.0d0
+         vr(i  ,3) = v(i,3) - 0.5d0*dvmon3*0.0d0
 
          pl(i+1) = p(i) + 0.5d0*dpmon*0.0d0
          pr(i  ) = p(i) - 0.5d0*dpmon*0.0d0
+
+         Bl(i+1,1) = B(i,1) + 0.5d0*dbmon1*0.0d0
+         Br(i  ,1) = B(i,1) - 0.5d0*dbmon1*0.0d0
+
+         Bl(i+1,2) = B(i,2) + 0.5d0*dbmon2*0.0d0
+         Br(i  ,2) = B(i,2) - 0.5d0*dbmon2*0.0d0
+
+         Bl(i+1,3) = B(i,3) + 0.5d0*dbmon3*0.0d0
+         Br(i  ,3) = B(i,3) - 0.5d0*dbmon3*0.0d0
       enddo
 
 !         call HLLE(leftst,rigtst,nflux)
       do i=is,ie+1
-         call HLLE(dl(i),vl(i),pl(i),dr(i),vr(i),pr(i),flux)
+         call HLLE(dl(i),vl(i,:),pl(i),dr(i),vr(i),pr(i),flux)
          dflux(i)  = flux(1)
          mvflux(i) = flux(2)
          etflux(i) = flux(3)
@@ -333,7 +391,6 @@ contains
       subroutine HLLE(dl,vl,pl,dr,vr,pr,flux)
       use commons, only : is, ie
       use eosmod
-      use fluxmod
       implicit none
       real(8),intent(in)::dl,vl,pl,dr,vr,pr
       real(8),intent(out) :: flux(:)
@@ -565,7 +622,6 @@ contains
 
       subroutine UpdateConsv( dflux, mvflux, etflux, d, mv, et )
       use commons
-      use fluxmod
       implicit none
       real(8), intent(in)  :: dflux(:), mvflux(:), etflux(:)
       real(8), intent(out) :: d(:), mv(:), et(:)
@@ -594,10 +650,10 @@ contains
       return
       end subroutine UpdateConsv
 
-      subroutine Output( x1a, x1b, d, v, p )
+      subroutine Output( x1a, x1b, d, v, p, B )
       use commons
       implicit none
-      real(8), intent(in) :: x1a(:), x1b(:), d(:), v(:), p(:)
+      real(8), intent(in) :: x1a(:), x1b(:), d(:), v(:,:), p(:), B(:,:)
       integer::i
       character(20),parameter::dirname="bindata/"
       character(40)::filename
@@ -629,7 +685,8 @@ contains
       open(unitbin,file=filename,form='formatted',action="write")
       write(unitbin,*) "# time = ",time
       do i=1,in
-          write(unitbin,*) x1b(i), d(i), v(i), p(i)
+          write(unitbin,*) x1b(i), d(i), v(i,1), v(i,2), v(i,3), p(i), &
+                            B(i,1), B(i,2), B(i,3)
 !          write(*,*) x1b(i), d(i), v(i), p(i)
       enddo
       close(unitbin)
