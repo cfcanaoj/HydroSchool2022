@@ -3,4 +3,89 @@
 %------------------------------------------------------------
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{1次元磁気流体方程式}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\begin{equation}
+    \frac{\partial {\bf U}}{\partial t} 
+    + \frac{\partial {\bf F}}{\partial x}=0
+\end{equation}
+\begin{equation}
+    {\bf U} = \left( 
+        \begin{array}{c}
+            \rho \\
+            \rho v_x \\
+            \rho v_y \\
+            \rho v_z \\
+            E\\
+            B_y \\
+            B_z \\
+    \end{array}
+\right),\;\;
+    {\bf F} = \left( 
+        \begin{array}{c}
+            \rho v_x \\
+            \rho v_x^2 + P_T - B_x^2 \\
+            \rho v_x v_y  - B_x B_y \\
+            \rho v_x v_z  - B_x B_z \\
+            (E + P_T)v_x - B_x ({\bf v}\cdot{\bf B}) \\
+            B_y v_x - B_x v_y\\
+            B_z v_x - B_x v_z\\
+    \end{array}
+\right)
+\end{equation}
+ここで、$E=P/(\gamma-1) + \rho {\bf v}^2/2 + {\bf B}^2/2$は全エネルギー、
+$P_T$は全圧力($P+{\bf B}^2/2$)を表す。
+$B_x$は$\nabla\cdot {\bf B}=0$から一定である必要がある。
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{双曲磁場発散除去法}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{equation}
+    \frac{\partial {\bf U}}{\partial t} 
+    + \frac{\partial {\bf F}}{\partial x}={\bf S}
+\end{equation}
+\begin{equation}
+    {\bf U} = \left( 
+        \begin{array}{c}
+            \rho \\
+            \rho v_x \\
+            \rho v_y \\
+            \rho v_z \\
+            E\\
+            B_x \\
+            B_y \\
+            B_z \\
+            \psi \\
+    \end{array}
+\right),\;\;
+    {\bf F} = \left( 
+        \begin{array}{c}
+            \rho v_x \\
+            \rho v_x^2 + P_T - B_x^2 \\
+            \rho v_x v_y  - B_x B_y \\
+            \rho v_x v_z  - B_x B_z \\
+            (E + P_T)v_x - B_x ({\bf v}\cdot{\bf B}) \\
+            \psi \\
+            B_y v_x - B_x v_y\\
+            B_z v_x - B_x v_z\\
+            c_h^2 B_x^2
+    \end{array}
+\right),\;\;
+    {\bf S} = \left( 
+        \begin{array}{c}
+            0 \\
+            0 \\
+            0 \\
+            0 \\
+            0 \\
+            0 \\
+            0\\
+            0\\
+            \psi/\tau \\
+    \end{array}
+    \right)
+\end{equation}
