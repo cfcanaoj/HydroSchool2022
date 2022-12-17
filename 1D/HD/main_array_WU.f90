@@ -7,7 +7,7 @@
       real(8),parameter:: timemax=0.2d0   
       real(8),parameter:: dtout=5.0d-3
 
-      integer,parameter::ngrid=150        ! the number of grids in the simulation box
+      integer,parameter::ngrid=128        ! the number of grids in the simulation box
       integer,parameter::mgn=2            ! the number of ghost cells
       integer,parameter::in=ngrid+2*mgn+1 ! the total number of grids including ghost cells
       integer,parameter::is=mgn+1         ! the index of the leftmost grid
@@ -38,59 +38,59 @@
       use commons
       implicit none
 
-      real(8),dimension(in)::x1a,x1b
+      real(8),dimension(in)::x1b,x1c
       real(8),dimension(in,NVAR) :: U
       real(8),dimension(in,NVAR) :: W
       real(8),dimension(in,NVAR) :: flux
 
       write(6,*) "setup grids and initial condition"
-      call GenerateGrid(x1a, x1b)
-      call GenerateProblem(x1b, W)
+      call GenerateGrid(x1b, x1c)
+      call GenerateProblem(x1c, W)
       call ConsvVariable(W, U)
-      call Output( x1a, x1b, W )
+      call Output( x1b, x1c, W )
 
 ! main loop
       mloop: do ntime=1,ntimemax
-         call TimestepControl(x1a, W)
+         call TimestepControl(x1b, W)
          if( time + dt > timemax ) dt = timemax - time
          call BoundaryCondition(W)
          call NumericalFlux(W, flux)
          call UpdateConsv( flux, U )
          call PrimVariable( U, W )
          time=time+dt
-         call Output( x1a, x1b, W)
+         call Output( x1b, x1c, W)
 
          if(time >= timemax) exit mloop
       enddo mloop
-      call Output( x1a, x1b, W)
+      call Output( x1b, x1c, W)
 
       write(6,*) "program has been finished"
 contains
 
-      subroutine GenerateGrid(x1a, x1b)
+      subroutine GenerateGrid(x1b, x1c)
       use commons
       use eosmod
       implicit none
-      real(8), intent(out) :: x1a(:), x1b(:)
+      real(8), intent(out) :: x1b(:), x1c(:)
       real(8) :: dx,dy
       integer::i
       dx=(x1max-x1min)/ngrid
       do i=1,in
-         x1a(i) = dx*(i-(mgn+1))+x1min
+         x1b(i) = dx*(i-(mgn+1))+x1min
       enddo
       do i=1,in-1
-         x1b(i) = 0.5d0*(x1a(i+1)+x1a(i))
+         x1c(i) = 0.5d0*(x1b(i+1)+x1b(i))
       enddo
 
       return
       end subroutine GenerateGrid
 
-      subroutine GenerateProblem(x1b, W)
+      subroutine GenerateProblem(x1c, W)
       use commons
       use eosmod
       implicit none
       integer::i
-      real(8), intent(in ) :: x1b(:)
+      real(8), intent(in ) :: x1c(:)
       real(8), intent(out) :: W(:,:)
       real(8) :: rho1,rho2,Lsm,u1,u2
 
@@ -98,7 +98,7 @@ contains
       pi=acos(-1.0d0)
 
       do i=is,ie
-         if( x1b(i) < 0.0d0 ) then 
+         if( x1c(i) < 0.0d0 ) then 
              W(i,IDN) = 1.0d0
              W(i,IV1) = 0.0d0
              W(i,IPR) = 1.0d0
@@ -177,11 +177,11 @@ contains
       return
       end subroutine PrimVariable
 
-      subroutine TimestepControl(x1a, W)
+      subroutine TimestepControl(x1b, W)
       use commons
       use eosmod
       implicit none
-      real(8), intent(in) :: x1a(:), W(:,:)
+      real(8), intent(in) :: x1b(:), W(:,:)
       real(8)::dtl1
       real(8)::dtl2
       real(8)::dtl3
@@ -192,7 +192,7 @@ contains
       dtmin=1.0d90
 
       do i=is,ie
-         dtlocal =(x1a(i+1)-x1a(i))/(abs(W(i,IV1)) + dsqrt(gam*W(i,IPR)/W(i,IDN)))
+         dtlocal =(x1b(i+1)-x1b(i))/(abs(W(i,IV1)) + dsqrt(gam*W(i,IPR)/W(i,IDN)))
          if(dtlocal .lt. dtmin) dtmin = dtlocal
       enddo
 
@@ -254,8 +254,8 @@ contains
 
          call vanLeer(NVAR, dWp,dWm,dWmon)
 
-         Wl(i+1,:) = W(i,:) + 0.5d0*dWmon(:)*1.0d0
-         Wr(i  ,:) = W(i,:) - 0.5d0*dWmon(:)*1.0d0
+         Wl(i+1,:) = W(i,:) + 0.5d0*dWmon(:)*0.0d0
+         Wr(i  ,:) = W(i,:) - 0.5d0*dWmon(:)*0.0d0
       enddo
 
 !         call HLLE(leftst,rigtst,nflux)
@@ -514,19 +514,19 @@ contains
 
       do n=1,NVAR
       do i=is,ie
-         U(i,n) = U(i,n) + dt*(- flux(i+1,n) + flux(i,n))/(x1a(i+1)-x1a(i)) 
+         U(i,n) = U(i,n) + dt*(- flux(i+1,n) + flux(i,n))/(x1b(i+1)-x1b(i)) 
       enddo
       enddo
 
       return
       end subroutine UpdateConsv
 
-      subroutine Output( x1a, x1b, W )
+      subroutine Output( x1b, x1c, W )
       use commons
       implicit none
-      real(8), intent(in) :: x1a(:), x1b(:), W(:,:)
+      real(8), intent(in) :: x1b(:), x1c(:), W(:,:)
       integer::i
-      character(20),parameter::dirname="bindata/"
+      character(20),parameter::dirname="snap/"
       character(40)::filename
       real(8),save::tout
       data tout / 0.0d0 /
@@ -540,21 +540,22 @@ contains
       data is_inited /.false./
 
       if (.not. is_inited) then
-         call makedirs("bindata")
+         call makedirs("snap")
          is_inited =.true.
       endif
 
       print*, time, tout+dtout, time+1.0d-14 .lt. tout+dtout
       if(time + 1.0d-14.lt. tout+dtout) return
 
-      write(filename,'(a3,i5.5,a4)')"bin",nout,".dat"
+      write(filename,'(a1,i5.5,a4)')"t",nout,".dat"
       filename = trim(dirname)//filename
 !      open(unitbin,file=filename,status='replace',form='formatted') 
       open(unitbin,file=filename,form='formatted',action="write")
-      write(unitbin,*) "# time = ",time
+      write(unitbin,"(a2,f6.4)") "# ",time
+      write(unitbin,*) "# x, density, velocity, pressure"
       do i=1,in-1
-          write(unitbin,*) x1b(i), W(i,IDN), W(i,IV1), W(i,IPR)
-!          write(*,*) x1b(i), d(i), v(i), p(i)
+          write(unitbin,*) x1c(i), W(i,IDN), W(i,IV1), W(i,IPR)
+!          write(*,*) x1c(i), d(i), v(i), p(i)
       enddo
       close(unitbin)
 !      open(unitbin,file=filename,status='replace',form='binary') 
