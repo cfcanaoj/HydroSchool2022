@@ -35,9 +35,9 @@ outfile=sprintf("snap/x-r%05d.png",num)
 set output outfile
 
 command=sprintf("awk 'NR==1{print($2)}' %s", inpfile)
-#print command
+print command
 timenum=system(command)
-#print timenum
+print timenum
 timetext=sprintf("t=%s",timenum)
 
 set label 1 timetext at graph 0.1,0.2 

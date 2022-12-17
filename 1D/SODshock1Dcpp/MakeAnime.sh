@@ -9,7 +9,7 @@ if [ ! -d $dirf ]; then
     exit
 fi
 
-for n in {1..200} ;do
+for n in {1..10} ;do
     gnuplot -e num=$n x-r.plt
     gnuplot -e num=$n x-p.plt
     gnuplot -e num=$n x-v.plt
