@@ -7,7 +7,7 @@ data time / 0.0d0 /
 real(8),parameter:: timemax=0.2d0   
 real(8),parameter:: dtout=5.0d-3
 
-integer,parameter::ngrid=1024       ! the number of grids in the simulation box
+integer,parameter::ngrid=128       ! the number of grids in the simulation box
 integer,parameter::mgn=2            ! the number of ghost cells
 integer,parameter::in=ngrid+2*mgn+1 ! the total number of grids including ghost cells
 integer,parameter::is=mgn+1         ! the index of the leftmost grid
