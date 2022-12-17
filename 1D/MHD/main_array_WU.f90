@@ -14,16 +14,16 @@ integer,parameter::is=mgn+1         ! the index of the leftmost grid
 integer,parameter::ie=ngrid+mgn     ! the index of the rightmost grid
 integer,parameter::nflux = 3
 real(8),parameter:: x1min=-0.5d0,x1max=0.5d0
+real(8),parameter:: Bx=4.0d0/dsqrt(4.0d0*3.141592653589793)
 
 integer, parameter :: IDN = 1
 integer, parameter :: IM1 = 2
 integer, parameter :: IM2 = 3
 integer, parameter :: IM3 = 4
 integer, parameter :: IPR = 5
-integer, parameter :: NVAR = 5
-
 integer, parameter :: IB2 = 6
 integer, parameter :: IB3 = 7
+integer, parameter :: NVAR = 7
 integer, parameter :: NFLX = 7
 
 integer, parameter :: IV1 = 2
@@ -49,29 +49,28 @@ end module commons
       real(8),dimension(in)::x1a,x1b
       real(8),dimension(in,NVAR) :: U
       real(8),dimension(in,NVAR) :: W
-      real(8),dimension(in,3) :: B
       real(8),dimension(in,NFLX) :: flux
 
 !      write(6,*) "setup grids and initial condition"
       call GenerateGrid(x1a, x1b)
-      call GenerateProblem(x1b, W, B)
-      call ConsvVariable(W, B, U)
-      call Output( x1a, x1b, W, B )
+      call GenerateProblem(x1b, W)
+      call ConsvVariable(W, U)
+      call Output( x1a, x1b, W )
 
 ! main loop
       mloop: do ntime=1,ntimemax
-         call TimestepControl(x1a, W, B)
+         call TimestepControl(x1a, W)
          if( time + dt > timemax ) dt = timemax - time
-         call BoundaryCondition( W, B )
-         call NumericalFlux( W, B, flux )
-         call UpdateConsv( flux, U, B )
-         call PrimVariable( U, B, W )
+         call BoundaryCondition( W)
+         call NumericalFlux( W, flux )
+         call UpdateConsv( flux, U)
+         call PrimVariable( U, W )
          time=time+dt
-         call Output( x1a, x1b, W, B)
+         call Output( x1a, x1b, W)
 
          if(time >= timemax) exit mloop
       enddo mloop
-      call Output( x1a, x1b, W, B)
+      call Output( x1a, x1b, W)
 
 !      write(6,*) "program has been finished"
 contains
@@ -94,13 +93,13 @@ contains
       return
       end subroutine GenerateGrid
 
-      subroutine GenerateProblem(x1b, W, B)
+      subroutine GenerateProblem(x1b, W)
       use commons
       use eosmod
       implicit none
       integer::i
       real(8), intent(in ) :: x1b(:)
-      real(8), intent(out) :: W(:,:), B(:,:)
+      real(8), intent(out) :: W(:,:)
       real(8) :: rho1,rho2,Lsm,u1,u2
 
       real(8)::pi
@@ -113,10 +112,8 @@ contains
              W(i,IV2) = 0.01d0
              W(i,IV3) = 0.5d0
              W(i,IPR) = 0.95d0
-
-             B(i,1) = 4.0d0/dsqrt(4.0d0*3.141592653589793)
-             B(i,2) = 3.6d0/dsqrt(4.0d0*3.141592653589793)
-             B(i,3) = 2.0d0/dsqrt(4.0d0*3.141592653589793)
+             W(i,IB2) = 3.6d0/dsqrt(4.0d0*3.141592653589793)
+             W(i,IB3) = 2.0d0/dsqrt(4.0d0*3.141592653589793)
 
          else 
              W(i,IDN) = 1.0d0
@@ -124,10 +121,8 @@ contains
              W(i,IV2) = 0.0d0
              W(i,IV3) = 0.0d0
              W(i,IPR) = 1.0d0
-
-             B(i,1) = 4.0d0/dsqrt(4.0d0*3.141592653589793)
-             B(i,2) = 4.0d0/dsqrt(4.0d0*3.141592653589793)
-             B(i,3) = 2.0d0/dsqrt(4.0d0*3.141592653589793)
+             W(i,IB2) = 4.0d0/dsqrt(4.0d0*3.141592653589793)
+             W(i,IB3) = 2.0d0/dsqrt(4.0d0*3.141592653589793)
          endif
       enddo
 
@@ -137,11 +132,12 @@ contains
       return
       end subroutine GenerateProblem
 
-      subroutine BoundaryCondition(W,B)
+      subroutine BoundaryCondition(W)
       use commons
       implicit none
-      real(8), intent(inout) :: W(:,:), B(:,:)
+      real(8), intent(inout) :: W(:,:)
       integer::i
+
 
       do i=1,mgn
           W(is-i,IDN)  = W(is-1+i,IDN)
@@ -149,9 +145,8 @@ contains
           W(is-i,IV2)  = W(is-1+i,IV2)
           W(is-i,IV3)  = W(is-1+i,IV3)
           W(is-i,IPR)  = W(is-1+i,IPR)
-          B(is-i,1)  = B(is-1+i,1)
-          B(is-i,2)  = B(is-1+i,2)
-          B(is-i,3)  = B(is-1+i,3)
+          W(is-i,IB2)  = W(is-1+i,IB2)
+          W(is-i,IB3)  = W(is-1+i,IB3)
       enddo
 
       do i=1,mgn
@@ -160,19 +155,18 @@ contains
           W(ie+i,IV2) = W(ie-i+1,IV2)
           W(ie+i,IV3) = W(ie-i+1,IV3)
           W(ie+i,IPR) = W(ie-i+1,IPR)
-          B(ie+i,1) = B(ie-i+1,1)
-          B(ie+i,2) = B(ie-i+1,2)
-          B(ie+i,3) = B(ie-i+1,3)
+          W(ie+i,IB2) = W(ie-i+1,IB2)
+          W(ie+i,IB3) = W(ie-i+1,IB3)
       enddo
 
       return
       end subroutine BoundaryCondition
 !
-      subroutine ConsvVariable(W, B, U)
+      subroutine ConsvVariable(W, U)
       use commons
       use eosmod
       implicit none
-      real(8), intent(in) :: W(:,:), B(:,:)
+      real(8), intent(in) :: W(:,:)
       real(8), intent(out) :: U(:,:)
       integer::i
 
@@ -182,18 +176,20 @@ contains
           U(i,IM2) = W(i,IDN)*W(i,IV2)
           U(i,IM3) = W(i,IDN)*W(i,IV3)
           U(i,IEN) = 0.5d0*W(i,IDN)*( W(i,IV1)**2 + W(i,IV2)**2 + W(i,IV3)**2 ) &
-                   + 0.5d0*( B(i,1)**2 + B(i,2)**2 + B(i,3)**2 ) &
+                   + 0.5d0*( Bx**2 + W(i,IB2)**2 + W(i,IB3)**2 ) &
                    + W(i,IPR)/(gam - 1.0d0)
+          U(i,IB2) = W(i,IB2)
+          U(i,IB3) = W(i,IB3)
       enddo
       
       return
       end subroutine Consvvariable
 
-      subroutine PrimVariable( U, B, W )
+      subroutine PrimVariable( U, W )
       use commons
       use eosmod
       implicit none
-      real(8), intent(in) :: U(:,:), B(:,:)
+      real(8), intent(in) :: U(:,:)
       real(8), intent(out) :: W(:,:)
       integer::i
       real(8) :: inv_d;
@@ -206,17 +202,19 @@ contains
            W(i,IV3) = U(i,IM3)*inv_d
            W(i,IPR) = ( U(i,IEN) &
                     - 0.5d0*(U(i,IM1)**2 + U(i,IM2)**2 + U(i,IM3)**2)*inv_d  &
-                    - 0.5d0*(B(i,1)**2 + B(i,2)**2 + B(i,3)**2) )*(gam-1.0d0)
+                    - 0.5d0*(Bx**2 + U(i,IB2)**2 + U(i,IB3)**2) )*(gam-1.0d0)
+           W(i,IB2) = U(i,IB2)
+           W(i,IB3) = U(i,IB3)
       enddo
 
       return
       end subroutine PrimVariable
 
-      subroutine TimestepControl(x1a, W,B)
+      subroutine TimestepControl(x1a, W)
       use commons
       use eosmod
       implicit none
-      real(8), intent(in) :: x1a(:), W(:,:), B(:,:)
+      real(8), intent(in) :: x1a(:), W(:,:)
       real(8)::dtl1
       real(8)::dtl2
       real(8)::dtl3
@@ -227,7 +225,7 @@ contains
       dtmin=1.0d90
 
       do i=is,ie
-         cf = dsqrt( (gam*W(i,IPR) + B(i,1)**2 + B(i,2)**2 + B(i,3)**2)/W(i,IDN))
+         cf = dsqrt( (gam*W(i,IPR) + Bx**2 + W(i,IB2)**2 + W(i,IB3)**2)/W(i,IDN))
          dtlocal =(x1a(i+1)-x1a(i))/(abs(W(i,IV1)) + cf)
          if(dtlocal .lt. dtmin) dtmin = dtlocal
       enddo
@@ -269,11 +267,11 @@ contains
 !
 !     Output: flux : the numerical flux estimated at the cell boundary
 !---------------------------------------------------------------------
-      subroutine NumericalFlux( W, B, flux )
+      subroutine NumericalFlux( W, flux )
       use commons !, only: is, ie, in
       implicit none
       integer::i
-      real(8), intent(in) :: W(:,:), B(:,:)
+      real(8), intent(in) :: W(:,:)
       real(8), intent(out) :: flux(:,:)
       real(8),dimension(in,NFLX):: Wl,Wr
       real(8),dimension(NFLX):: flx
@@ -284,20 +282,14 @@ contains
          dWp(1:NVAR) = W(i+1,1:NVAR) - W(i  ,1:NVAR)
          dWm(1:NVAR) = W(i  ,1:NVAR) - W(i-1,1:NVAR)
 
-         dWp(IB2:IB3) = B(i+1,2:3) - B(i,  2:3)
-         dWm(IB2:IB3) = B(i  ,2:3) - B(i-1,2:3)
-
          call vanLeer(NFLX, dWp, dWm, dWmon)
 
          Wl(i+1,1:NVAR) = W(i,1:NVAR) + 0.5d0*dWmon(1:NVAR)*1.0d0
          Wr(i  ,1:NVAR) = W(i,1:NVAR) - 0.5d0*dWmon(1:NVAR)*1.0d0
-
-         Wl(i+1,IB2:IB3) = B(i,2:3) + 0.5d0*dWmon(IB2:IB3)*1.0d0
-         Wr(i  ,IB2:IB3) = B(i,2:3) - 0.5d0*dWmon(IB2:IB3)*1.0d0
       enddo
 
       do i=is,ie+1
-         call HLL(Wl(i,:),Wr(i,:),0.5d0*(B(i-1,1) + B(i,1)),flx)
+         call HLL(Wl(i,:),Wr(i,:),flx)
          flux(i,:)  = flx(:)
       enddo
 
@@ -325,12 +317,11 @@ contains
 !     Output: flx  : flux estimated at the initial discontinuity
 !            index: (IDN, IV1, IV2, IV3, IPR, IB2, IB3)
 !---------------------------------------------------------------------
-      subroutine HLL(Wl,Wr,b1,flx)
+      subroutine HLL(Wl,Wr,flx)
       use commons !, only : is, ie, NVAR
       use eosmod
       implicit none
       real(8),intent(in)::Wl(:), Wr(:)
-      real(8),intent(in) :: b1
       real(8),intent(out) :: flx(:)
       real(8):: Ul(NFLX), Ur(NFLX)
       real(8):: Fl(NFLX), Fr(NFLX)
@@ -341,8 +332,8 @@ contains
       real(8):: pbl, pbr, ptotl, ptotr
       integer :: i, n
 
-          pbl = 0.5d0*(b1**2 + Wl(IB2)**2 + Wl(IB3)**2)
-          pbr = 0.5d0*(b1**2 + Wr(IB2)**2 + Wr(IB3)**2)
+          pbl = 0.5d0*(Bx**2 + Wl(IB2)**2 + Wl(IB3)**2)
+          pbr = 0.5d0*(Bx**2 + Wr(IB2)**2 + Wr(IB3)**2)
           ptotl = Wl(IPR) + pbl
           ptotr = Wr(IPR) + pbr
 
@@ -367,25 +358,25 @@ contains
 
           ! flux in the left and right states
           Fl(IDN) = Ul(IM1)
-          Fl(IM1) = Wl(IDN)*Wl(IV1)**2 + ptotl - b1**2
-          Fl(IM2) = Wl(IDN)*Wl(IV1)*Wl(IV2) - b1*Wl(IB2)
-          Fl(IM3) = Wl(IDN)*Wl(IV1)*Wl(IV3) - b1*Wl(IB3)
+          Fl(IM1) = Wl(IDN)*Wl(IV1)**2 + ptotl - Bx**2
+          Fl(IM2) = Wl(IDN)*Wl(IV1)*Wl(IV2) - Bx*Wl(IB2)
+          Fl(IM3) = Wl(IDN)*Wl(IV1)*Wl(IV3) - Bx*Wl(IB3)
           Fl(IEN) = ( Ul(IEN) + ptotl )*Wl(IV1) &
-                  - b1*( b1*Wl(IV1) + Wl(IB2)*Wl(IV2) + Wl(IB3)*Wl(IV3) )
-          Fl(IB2) = Wl(IB2)*Wl(IV1) - b1*Wl(IV2)
-          Fl(IB3) = Wl(IB3)*Wl(IV1) - b1*Wl(IV3)
+                  - Bx*( Bx*Wl(IV1) + Wl(IB2)*Wl(IV2) + Wl(IB3)*Wl(IV3) )
+          Fl(IB2) = Wl(IB2)*Wl(IV1) - Bx*Wl(IV2)
+          Fl(IB3) = Wl(IB3)*Wl(IV1) - Bx*Wl(IV3)
 
           Fr(IDN) = Ur(IM1)
-          Fr(IM1) = Wr(IDN)*Wr(IV1)**2 + ptotr - b1**2
-          Fr(IM2) = Wr(IDN)*Wr(IV1)*Wr(IV2) - b1*Wr(IB2)
-          Fr(IM3) = Wr(IDN)*Wr(IV1)*Wr(IV3) - b1*Wr(IB3)
+          Fr(IM1) = Wr(IDN)*Wr(IV1)**2 + ptotr - Bx**2
+          Fr(IM2) = Wr(IDN)*Wr(IV1)*Wr(IV2) - Bx*Wr(IB2)
+          Fr(IM3) = Wr(IDN)*Wr(IV1)*Wr(IV3) - Bx*Wr(IB3)
           Fr(IEN) = ( Ur(IEN) + ptotr )*Wr(IV1) &
-                  - b1*( b1*Wr(IV1) + Wr(IB2)*Wr(IV2) + Wr(IB3)*Wr(IV3) )
-          Fr(IB2) = Wr(IB2)*Wr(IV1) - b1*Wr(IV2)
-          Fr(IB3) = Wr(IB3)*Wr(IV1) - b1*Wr(IV3)
+                  - Bx*( Bx*Wr(IV1) + Wr(IB2)*Wr(IV2) + Wr(IB3)*Wr(IV3) )
+          Fr(IB2) = Wr(IB2)*Wr(IV1) - Bx*Wr(IV2)
+          Fr(IB3) = Wr(IB3)*Wr(IV1) - Bx*Wr(IV3)
 
-          cfl = dsqrt( (gam*Wl(IPR) + Wl(IB2)**2 + Wl(IB3)**2 + b1**2)/Wl(IDN))
-          cfr = dsqrt( (gam*Wr(IPR) + Wr(IB2)**2 + Wr(IB3)**2 + b1**2)/Wr(IDN))
+          cfl = dsqrt( (gam*Wl(IPR) + Wl(IB2)**2 + Wl(IB3)**2 + Bx**2)/Wl(IDN))
+          cfr = dsqrt( (gam*Wr(IPR) + Wr(IB2)**2 + Wr(IB3)**2 + Bx**2)/Wr(IDN))
 
 !          sl = min(Wl(IV1),Wr(IV1)) - max(cfl,cfr)
 !          sr = max(Wl(IV1),Wr(IV1)) + max(cfl,cfr)
@@ -594,11 +585,11 @@ contains
 !      return
 !      end subroutine HLLC
 
-      subroutine UpdateConsv( flux, U, B )
+      subroutine UpdateConsv( flux, U )
       use commons
       implicit none
       real(8), intent(in)  :: flux(:,:)
-      real(8), intent(out) :: U(:,:), B(:,:)
+      real(8), intent(out) :: U(:,:)
       integer::i,n
 
       do n=1,NVAR
@@ -607,19 +598,14 @@ contains
       enddo
       enddo
 
-      do i=is,ie
-         B(i,2) = B(i,2) + dt*(- flux(i+1,IB2) + flux(i,IB2))/(x1a(i+1)-x1a(i)) 
-         B(i,3) = B(i,3) + dt*(- flux(i+1,IB3) + flux(i,IB3))/(x1a(i+1)-x1a(i)) 
-      enddo
-      
 
       return
       end subroutine UpdateConsv
 
-      subroutine Output( x1a, x1b, W, B )
+      subroutine Output( x1a, x1b, W )
       use commons
       implicit none
-      real(8), intent(in) :: x1a(:), x1b(:), W(:,:), B(:,:)
+      real(8), intent(in) :: x1a(:), x1b(:), W(:,:)
       integer::i
       character(20),parameter::dirname="bindata/"
       character(40)::filename
@@ -642,14 +628,14 @@ contains
 !      print*, time, tout+dtout, time+1.0d-14 .lt. tout+dtout
       if(time + 1.0d-14.lt. tout+dtout) return
 
-      write(filename,'(a3,i5.5,a4)')"bin",nout,".dat"
+      write(filename,'(a3,i5.5,a4)')"1bin",nout,".dat"
       filename = trim(dirname)//filename
 !      open(unitbin,file=filename,status='replace',form='formatted') 
       open(unitbin,file=filename,form='formatted',action="write")
       write(unitbin,*) "# time = ",time
       do i=1,in-1
-          write(unitbin,*) x1b(i), W(i,IDN), W(i,IV1), W(i,IV2), W(i,IV3), W(i,IPR), B(i,1), &
-          B(i,2), B(i,3)
+          write(unitbin,*) x1b(i), W(i,IDN), W(i,IV1), W(i,IV2), W(i,IV3), W(i,IPR), Bx, &
+          W(i,IB2), W(i,IB3)
 !          write(*,*) x1b(i), d(i), v(i), p(i)
       enddo
       close(unitbin)
