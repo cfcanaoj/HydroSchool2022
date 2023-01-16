@@ -209,7 +209,7 @@ end module eosmod
           v1(is-i,j,k) = -v1(is+i-1,j,k)
           v2(is-i,j,k) =  v2(is+i-1,j,k)
           v3(is-i,j,k) =  v3(is+i-1,j,k)
-          gp(is-i,j,k) =  gp(is+i-1,j,k)
+!          gp(is-i,j,k) =  gp(is+i-1,j,k)
       enddo
       enddo
 
@@ -222,7 +222,7 @@ end module eosmod
           v1(ie+i,j,k) = -v1(ie-i+1,j,k)
           v2(ie+i,j,k) =  v2(ie-i+1,j,k)
           v3(ie+i,j,k) =  v3(ie-i+1,j,k)
-          gp(ie+i,j,k) =  gp(ie-i+1,j,k)
+!          gp(ie+i,j,k) =  gp(ie-i+1,j,k)
       enddo
       enddo
 

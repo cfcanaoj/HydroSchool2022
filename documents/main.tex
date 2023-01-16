@@ -14,9 +14,9 @@
 \usepackage[dvipdfm]{graphicx}
 \usepackage{ascmac,color}
 \usepackage{listings,jlisting}
+\usepackage{hyperref}
 %% uncommand the following line to print equation labels next to
 %% equation numbers. 
-%\usepackage{showlabel}
 
 %\makeatletter
 %\long\def\@makecaption#1#2{%
@@ -33,6 +33,8 @@
 %\makeatother
 
 \newcommand{\ttf}[1]{{\ttfamily $#1$}}
+
+\newcommand{\bm}[1]{{\mbox{\boldmath $#1$}}}
 
 %% The following is to control the format of your thesis
 %\usepackage[round]{natbib}
@@ -76,6 +78,9 @@
        captionpos=b
 }
 
+\newcommand{\SR}{S_\mathrm{R}}
+\newcommand{\SL}{S_\mathrm{L}}
+
 \begin{document}
 
 %% Front page of thesis
@@ -90,12 +95,13 @@
 %\include{advection}
 \include{HD1}
 \include{MHD}
+\include{testcal}
 %\include{gnuplot}
 %\include{matplotlib}
 
 %\appendix
 %\include{appendix}
 %
-%\bibliography{main}
+\bibliography{main}
 
 \end{document}

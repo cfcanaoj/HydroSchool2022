@@ -1,70 +1,73 @@
 %------------------------------------------------------------
-\chapter{ 流体方程式の数値解法}
+\chapter{流体方程式の数値解法}
 %------------------------------------------------------------
 
+%
+%\begin{equation}
+%    \frac{\partial \bm{ U}}{\partial t} 
+%    + \frac{\partial \bm{ F}}{\partial x}
+%    + \frac{\partial \bm{ G}}{\partial y}
+%    + \frac{\partial \bm{ H}}{\partial z}=0
+%\end{equation}
+%\begin{equation}
+%    \bm{ U} = \left( 
+%        \begin{array}{c}
+%            \rho \\
+%            \rho v_x \\
+%            \rho v_y \\
+%            \rho v_z \\
+%            E
+%    \end{array}
+%\right),\;\;
+%    \bm{ F} = \left( 
+%        \begin{array}{c}
+%            \rho v_x \\
+%            \rho v_x^2 + P \\
+%            \rho v_x v_y \\
+%            \rho v_x v_z \\
+%            (E + P)v_x
+%    \end{array}
+%\right),\;\;
+%    \bm{ G} = \left( 
+%        \begin{array}{c}
+%            \rho v_y \\
+%            \rho v_y v_x \\
+%            \rho v_y^2 + P \\
+%            \rho v_y v_z \\
+%            (E + P)v_y
+%    \end{array}
+%\right),\;\;
+%    \bm{ G} = \left( 
+%        \begin{array}{c}
+%            \rho v_z \\
+%            \rho v_z v_x \\
+%            \rho v_z v_y \\
+%            \rho v_z^2 + P  \\
+%            (E + P)v_z
+%    \end{array}
+%\right),\;\;
+%\end{equation}
+%%%%
+%
+%%----------------------------------------------------------------------
+%\newpage
+%\section{一次元数値流体計算法}
+%%----------------------------------------------------------------------
+この章では、以下の1次元流体方程式の数値解法について扱う。
+高精度化と多次元化については次の磁気流体方程式の数値解法の章(第\ref{chap:mhd}章)で説明する。
 \begin{equation}
-    \frac{\partial {\bf U}}{\partial t} 
-    + \frac{\partial {\bf F}}{\partial x}
-    + \frac{\partial {\bf G}}{\partial y}
-    + \frac{\partial {\bf H}}{\partial z}=0
+    \frac{\partial \bm{ U}}{\partial t} 
+    + \frac{\partial \bm{ F}}{\partial x}=0
 \end{equation}
 \begin{equation}
-    {\bf U} = \left( 
+    \bm{ U} = \left( 
         \begin{array}{c}
             \rho \\
             \rho v_x \\
-            \rho v_y \\
-            \rho v_z \\
             E
     \end{array}
 \right),\;\;
-    {\bf F} = \left( 
-        \begin{array}{c}
-            \rho v_x \\
-            \rho v_x^2 + P \\
-            \rho v_x v_y \\
-            \rho v_x v_z \\
-            (E + P)v_x
-    \end{array}
-\right),\;\;
-    {\bf G} = \left( 
-        \begin{array}{c}
-            \rho v_y \\
-            \rho v_y v_x \\
-            \rho v_y^2 + P \\
-            \rho v_y v_z \\
-            (E + P)v_y
-    \end{array}
-\right),\;\;
-    {\bf G} = \left( 
-        \begin{array}{c}
-            \rho v_z \\
-            \rho v_z v_x \\
-            \rho v_z v_y \\
-            \rho v_z^2 + P  \\
-            (E + P)v_z
-    \end{array}
-\right),\;\;
-\end{equation}
-%%%
-
-%----------------------------------------------------------------------
-\newpage
-\section{一次元数値流体計算コード}
-%----------------------------------------------------------------------
-\begin{equation}
-    \frac{\partial {\bf U}}{\partial t} 
-    + \frac{\partial {\bf F}}{\partial x}=0
-\end{equation}
-\begin{equation}
-    {\bf U} = \left( 
-        \begin{array}{c}
-            \rho \\
-            \rho v_x \\
-            E
-    \end{array}
-\right),\;\;
-    {\bf F} = \left( 
+    \bm{ F} = \left( 
         \begin{array}{c}
             \rho v_x \\
             \rho v_x^2 + P \\
@@ -73,6 +76,302 @@
 \right)
 \label{hydro1d_eq}
 \end{equation}
+
+流体方程式の数値解法については様々な手法が提案されてきた。
+CfCA流体学校では、
+現在の天文シミュレーションにおいて広く用いられているGodunov法
+\citep{Godunov1959}とそこから派生した手法を主に扱う。
+その前に、移流方程式の数値解法で開発された手法の流体方程式への
+応用についても、Riemann不変量や特性曲線などの重要事項が出てくる
+とともに歴史的に重要なので簡単に説明する。
+
+%---------------------------------------
+\section{移流方程式の数値解法の流体方程式への適用}\label{sec:advection}
+%---------------------------------------
+
+%------------------------------
+\subsection{移流方程式の数値解法}
+%------------------------------
+最も簡単な双曲型微分方程式である移流方程式
+\begin{equation}
+    \frac{\partial u}{\partial t} + c\frac{\partial u}{\partial x}=0
+    \label{advection}
+\end{equation}
+は、物理量$f$の速度$c$での移流を表しており、
+厳密解$u=f(x-ct)$が知られている。
+
+移流方程式の数値解法については長い歴史があり、移流方程式の発展形である流体方程式の数値解法に
+
+
+\begin{equation}
+u_i^{n+1} = u_i^n - \nu (f_{i+1/2} - f_{i-1/2}),
+\end{equation}
+ここで、$\nu = c \Delta t/\Delta x$。
+
+数値流束$f_{i+1/2}$の様々な評価方法がある。
+詳細な解説は講義に譲り、ここでは代表的なものについて列挙する。
+
+\noindent
+\underline{\bf 中心差分}
+
+差分方程式は、
+\begin{equation}
+    u_i^{n+1} = u^n - \nu \frac{1}{2} \left( u_{i+1} - u_{i-1}\right)
+\end{equation}
+となり、有限体積法での数値流束は
+\begin{equation}
+    f_{i+1/2} = 
+    c \frac{u_i+u_{i+1}}{2}
+\end{equation}
+となる。中心差分は数値的に不安定である。
+
+\noindent
+\underline{\bf 空間一次精度風上差分}
+
+差分方程式は、$c$の正負により後退差分と前進差分を切り替えて、
+\begin{equation}
+    u_i^{n+1} = 
+    \left\{
+    \begin{array}{ll}
+    u^n - \nu \left( u_{i} - u_{i-1}\right) & \mathrm{for}\;\; c>0 \\
+    u^n - \nu \left( u_{i+1} - u_{i}\right) & \mathrm{for}\;\; c<0
+    \end{array}
+    \right.
+\end{equation}
+となり、数値流束は
+\begin{equation}
+    f_{i+1/2} = 
+    \left\{
+    \begin{array}{ll}
+         c u_i & \mathrm{for}~ c> 0 \\
+         c u_{i+1} & \mathrm{for}~ c<0 \\
+    \end{array}
+    \right.
+\end{equation}
+となる。また以下のようにまとめて書くこともできる。
+\begin{equation}
+    f_{i+1/2} = 
+    \left\{
+    \frac{cu_i+cu_{i+1}}{2}
+     - \frac{|c|}{2}(u_{i+1} - u_i) 
+    \right\}
+\end{equation}
+
+\noindent
+\underline{\bf Lax法}
+
+差分方程式\citep{Lax1954}は、
+\begin{equation}
+    u_i^{n+1} = \frac{u_{i-1}^n + u_{i+1}^n}{2} - \frac{\nu}{2} \left( u_{i+1} - u_{i-1}\right)
+\end{equation}
+となり、数値流束は、
+\begin{equation}
+    f_{i+1/2} = 
+    c\left(
+    \frac{1+1/\nu}{2} u_{i}
+    + \frac{1-1/\nu}{2} u_{i+1}
+    \right)
+    = 
+    c\left(
+    \frac{u_i+u_{i+1}}{2}
+    \right)
+     - \frac{\Delta x}{2\Delta t}(u_{i+1} - u_i) 
+\end{equation}
+となる。
+
+\noindent
+\underline{\bf Lax-Wendroff法}
+
+差分方程式\citep{LaxWendroff1960}は、
+\begin{equation}
+    u_i^{n+1} = u_i^n 
+    - \frac{\nu}{2} \left( u_{i+1} - u_{i-1}\right)
+    + \frac{\nu^2}{2} \left( u_{i+1} - 2u_i + u_{i-1}\right)
+\end{equation}
+となり、数値流束は、
+\begin{equation}
+    f_{i+1/2} = 
+    c\left(
+    \frac{1+\nu}{2} u_{i}
+    + \frac{1-\nu}{2} u_{i+1}
+    \right)
+    = 
+    c\left\{
+    \frac{u_i+u_{i+1}}{2}
+     - \frac{\nu}{2}(u_{i+1} - u_i) 
+    \right\}
+\end{equation}
+となる。
+
+Lax法とLax-Wendroff法は、セル境界$i+1/2$の両側のセル中心の値
+$u_i$と$u_{i+1}$をある重みを付けて平均した値で流束を
+評価していることになっている。
+また、別の見方をすると、
+数値流束は中心差分での数値流束に、$u_{i+1}-u_i$に比例する
+項を加えた形に変形することができる。
+$u_{i+1}-u_i \sim (\partial u/\partial x)\Delta x$
+なので、拡散として働き、
+その拡散係数はLax法では$c\Delta x/\nu=\Delta x^2/\Delta t$、Lax-Wendroff法では
+$\nu c\Delta x=c^2\Delta t $となる。
+数値的に不安定な中心差分を拡散で安定化していると解釈することができる。
+ただその大きさは両者で異なり、Lax法は離散化した時空($\Delta x, \Delta t$)で決まる最大の拡散になっており、
+Lax-Wendroff法は、移流速度と$\Delta t$の間での移流距離で決まる拡散になっている。
+CFL条件より$\nu\le 1$なので、Lax法の方がLax-Wendroff法よりも数値拡散がかなり大きく入る。
+
+
+
+
+
+%------------------------------
+\subsection{特性曲線}
+%------------------------------
+
+流体方程式の性質として、
+
+
+流体方程式はJacobi行列$A$を使うと、以下のように移流方程式に似せた形に書き換えることができる。
+\begin{equation}
+    \frac{\partial U_i}{\partial t} 
+    + A_{ij} \frac{\partial U_j}{\partial x}=0,\;\;\;A_{ij} = \frac{\partial F_i}{\partial U_j}
+\end{equation}
+\begin{equation}
+    A_{ij} = \left( 
+        \begin{array}{ccc}
+         0  & 1 & 0 \\
+       \displaystyle - (3-\gamma)v^2/2  & (3-\gamma) v & \gamma - 1 \\ 
+       \displaystyle  
+       \left(\frac{(\gamma-2)v^2}{2} - 
+       \frac{\gamma P}{\gamma-1} \right)v & 
+       \displaystyle \frac{\gamma P}{\gamma-1} +
+       \frac{(3-2\gamma)v^2}{2} & \gamma v\\
+        \end{array}
+    \right)
+\end{equation}
+$A_{ij}$が移流方程式での速度に対応するが、非対角成分が存在するので、
+完全な移流方程式ではない。
+そこで$A_{ij}$が対角成分となるような系を変換する。
+
+Jacobi行列の固有値と固有ベクトルは、それぞれ
+\begin{equation}
+    \lambda_1 = v - a, \lambda_2 = v, \lambda_3 = v+a 
+\end{equation}
+\begin{equation}
+\bm{ r}_1 = 
+\left(
+        \begin{array}{ccc}
+         1  \\
+         v-a \\
+         H - va \\
+        \end{array}
+\right),\;\;\;
+\bm{ r}_2 = 
+\left(
+        \begin{array}{ccc}
+         1  \\
+         v \\
+         v^2/2 \\
+        \end{array}
+\right),\;\;\;
+\bm{ r}_3 = 
+\left(
+        \begin{array}{ccc}
+         1  \\
+         v+a \\
+         H + va \\
+        \end{array}
+\right),\;\;\;
+\end{equation}
+となる。ここで$H=v^2/2 + \gamma P/(\gamma-1)$は比エンタルピーを表す。
+固有ベクトルから構成した行列
+\begin{equation}
+    R_{ij} = \left( \bm{ r}_1, \bm{ r}_2, \bm{ r}_3 \right)
+    = \left( 
+        \begin{array}{ccc}
+         1  & 1 & 1 \\
+         v-a & v & v+a \\
+         H - va & v^2/2 & H + va\\
+        \end{array}
+    \right)
+\end{equation}
+を使って、Jacobi行列を以下のように対角化できる。
+\begin{equation}
+\Lambda_{ij} = 
+(R^{-1})_{ik} A_{kl} R_{lj} = 
+   \left( 
+        \begin{array}{ccc}
+         v-a  & 0 & 0 \\
+         0 & v & 0 \\
+         0 & 0 & v + a\\
+        \end{array}
+    \right)
+\end{equation}
+$R$の逆行列は以下になる。
+\begin{equation}
+    (R^{-1})_{ij} = \frac{\gamma-1}{2a^2}\left( 
+        \begin{array}{ccc}
+        \displaystyle \frac{v^2}{2} + \frac{va}{\gamma-1}  & \displaystyle  -v - \frac{a}{\gamma-1} & 1 \\
+          \displaystyle -v^2 + \frac{2a^2}{\gamma-1} & 2a & -2  \\
+       \displaystyle    \frac{v^2}{2} - \frac{va}{\gamma-1}  &  \displaystyle -v + \frac{a}{\gamma-1} & 1 \\
+        \end{array}
+    \right)
+\end{equation}
+流体方程式は以下のように変形できる。
+\begin{equation}
+(R^{-1})_{ik} \frac{\partial U_k}{\partial t}
+= \lambda_i (R^{-1})_{ik} \frac{\partial U_k}{\partial x}
+\end{equation}
+保存量ベクトルを$R^{-1}$で変換した量
+$\bm{ W}$が、対応する$\Lambda_{ij}$の対角成分の速度で
+移流するということを表している。
+\begin{equation}
+(R^{-1})_{ik} dU_k
+=
+\frac{1}{2a^2}\left(
+\begin{array}{c}
+\displaystyle
+    dP - a \rho d v \\
+  \displaystyle 
+  - 2a^2P d\left[\ln \left( P \rho^{-\gamma}\right)\right] \\
+\displaystyle
+    dP + a \rho d v \\
+\end{array}
+\right)
+\equiv
+\left(
+\begin{array}{c}
+dW_1 \\ 
+dW_2 \\
+dW_3 
+\end{array}
+\right)
+\end{equation}
+$\bm{ W}$はRiemann不変量と呼ばれ、$W_1$と$W_2$は、流体系から見て左右に音速で伝播する音波によって
+移流する量を表し、$W_2$はエントロピーと等しく、流体素片の速度で伝播するエントロピー波を表す。
+
+流体方程式をこれら３つの移流方程式に分解し、
+それぞれに移流方程式の適切な数値計算法を適用して時間更新させたのち、$R$を掛けて元の保存量に戻せばよい。
+たとえば、空間一次精度風上差分法を流体方程式に適用すると、
+数値流束は、
+\begin{equation}
+    \bm{ F}_{i+1/2}
+    = \frac{1}{2}\left[\bm{ F}_i + \bm{ F}_{i+1} 
+     - \left(\bm{ R} |\Lambda| \bm{ R^{-1}}\right)_{i+1/2} \left( \bm{ U}_{i+1} - \bm{ U}_i \right)
+     \right]
+\end{equation}
+となる。ここで$|\Lambda|$は$\Lambda$の対角成分の絶対値をとった行列である。
+
+
+
+
+
+
+
+%---------------------------------------
+\clearpage
+\section{Godunov法}\label{sec:godunov}
+%---------------------------------------
+
+
 
 天文学の多くのシミュレーションでは、有限体積法が用いられている。
 空間をセルに分割し、セル内の物理量の時間発展を、セルの両側の境界で流れる流束の
@@ -91,24 +390,31 @@ $F_{i-1/2}$と$F_{i+1/2}$とすると、有限体積法による保存量の時�
 詳しくは講義で話されるが、
 $x_{i+1/2}$での数値流束を、$x_i$と$x_{i+1}$の保存量を使って
 出した流束の単純な平均
-(例えば、質量保存式の場合$F_{i+1/2}=\{ (\rho v_x)_i + (\rho v_x)_{i+1})\}/2$)
-として表して計算すると、移流方程式での中心差分に相当し、数値的に不安定となる。
+(例えば、質量保存式の場合
+$F_{i+1/2}=\{ (\rho v_x)_i + (\rho v_x)_{i+1})\}/2$)
+として表して計算すると、移流方程式での中心差分に相当し、
+数値的に不安定となる。
 
-天文シミュレーションで用いられる多くのコードでは、
-セル境界の左と右の状態を使ってRiemann問題を解いた結果から
-セル境界での数値流束を評価するGodunov法と呼ばれる手法が用いられる。
+
+\citet{Godunov1959}によって提唱されたGodunov法は、
+数値流束$\bm{ F}_{i+1/2}$を求める際に、
+左の状態$\bm{ U}_i$と右の状態$\bm{ U}_{i+1}$
+の間に初期不連続があるとしてRiemann問題を解いて得た厳密解を使い、
+セル境界の位置の物理量から数値流束を計算する手法である。
 形式的に書くと，
 \begin{equation}
-    F_{i+1/2} = \mathrm{RiemannProblem}(U_{\mathrm{L},i+1/2},U_{\mathrm{R},i+1/2})
+    F_{i+1/2} = \mathrm{RiemannProblem}(U_{i},U_{i+1})
 \end{equation}
-となる。
+となる。ここで$\mathrm{RiemannProblem}$は、左右の状態を入力として数値流束を返す関数である。
+\citet{Godunov1959}の手法は空間一次精度であったが、
+G
 
-\subsection{空間１次精度スキーム}
-空間１次精度のスキームでは、右と左の物理量にセル中心の値をつかう。
-\begin{equation}
-    F_{i+1/2} = \mathrm{RiemannProblem}(U_i,U_{i+1})
-\end{equation}
-MUSCL法を使った空間２次精度のスキームでは、セル中心からセル境界に線形補間した
+%\subsection{空間１次精度スキーム}
+%空間１次精度のスキームでは、右と左の物理量にセル中心の値をつかう。
+%\begin{equation}
+%    F_{i+1/2} = \mathrm{RiemannProblem}(U_i,U_{i+1})
+%\end{equation}
+%MUSCL法を使った空間２次精度のスキームでは、セル中心からセル境界に線形補間した
 
 %\vspace{1cm}
 %時間を１ステップ($t^n$から$t^{n+1}$)進める手順は簡単に書くと以下になる。
@@ -117,9 +423,253 @@ MUSCL法を使った空間２次精度のスキームでは、セル中心から
 %\item 数値流束を用いて、保存量を$\Delta t$だけ更新する。
 %\end{enumerate}
 
-\vspace{2cm}
+%-----------------------------------------
+\clearpage
+\subsection{近似Riemann解法}
+%-----------------------------------------
+
+厳密なRiemann解法では、陰的方程式の求解が必要なので、計算に
+時間がかかるという問題がある。
+ただ流体方程式の場合については、
+厳密Riemann解法が比較的単純なので
+一部のシミュレーションで使われている。
+しかし、
+第\ref{chap:mhd}章で扱う磁気流体力学での厳密Riemann解法は、
+波の数が最大7本となり、求解過程が非常に複雑になる。
+そのため特に磁気流体では厳密Riemann解法を
+使うのは現実的ではない。
+
+そこでRiemann問題を厳密に解かずに、ある程度サボって近似的に解く
+手法が確立している。
+今回の実習では代表的な近似Riemann解法であるHLL法と、それから
+派生したHLLC法を実装する。
+
+%--------------------------------------------------------
+\subsubsection{Harten-Lax-van Leer (HLL)近似Riemann解法}
+%--------------------------------------------------------
+
+
+
+HLL法は\citet{Harten1983}によって提案され、
+下の図のように
+セル境界を起点として、
+左右に伝播する波(速度は$\SL$と$\SR$)に一様な中間状態$(\bm{ U}^*,\bm{ F}^*)$を仮定する。
+
+求めたい量はセル境界での流束$\bm{ F}$である。
+$\SL$と$\SR$の正負によって以下の場合に分けることができる($\SR>\SL$は使う)。
+\begin{itemize}
+\item $\SL>0$のとき。この時は、セル境界は左の状態にあるので、
+数値流束に$\bm{ F}_\mathrm{L
+}$を採用する。
+
+\item $\SR < 0$のとき。この時は、セル境界は左の状態にあるので、
+数値流束に$\bm{ F}_\mathrm{R
+}$を採用する。
+
+\item それ以外($\SL\le 0 \le \SR)$。
+下の図のように、セル境界が中間状態にあるので、数値流束に$\bm{ F}^*$を採用する。
+\end{itemize}
+
+
+\begin{figure}[htpb]
+    \centering
+    \includegraphics[width=10cm]{figures/HLL.pdf}
+    \caption{
+    HLL法
+    }
+    \label{fig:HLL}
+\end{figure}
+
+上記の場合分けの３つ目の場合は、中間状態の数値流束$\bm{ F}^*$が必要であるため、
+以下で、その導出過程を示す。
+HLL法では以下の保存式のみを使って中間状態を求める。
+\begin{equation}
+    \frac{\partial \bm{ U}}{\partial t}
+    + \frac{\partial \bm{ F}}{\partial x} = \bm{ 0}
+\end{equation}
+
+まず、保存則を$\SL\Delta t\le x \le \SR\Delta t$と $0\le t\le \Delta t$で積分する。
+\begin{equation}
+    \int_{\SL\Delta t}^{\SR \Delta t} \bm{ U}(\Delta t, x) dx 
+    - \int_{\SL\Delta t}^{\SR \Delta t}\bm{ U}(0, x)dx
+    + \int_{0}^{\Delta t} \bm{ F}(t,\SR\Delta t) dt
+    - \int_{0}^{\Delta t} \bm{ F}(t, \SL \Delta t) dt  = 0
+\end{equation}
+第一項は、時刻$t=\Delta t$で、$\SL\Delta t\le x \le \SR\Delta t$にある状態なので、
+$\bm{ U}^* (\SR - \SL)\Delta t$となり、
+第二項は、時刻$t=0$なので、$\SL\Delta t\le x\le 0$と$0\Delta t\le x\le \SR \Delta t$に
+分割し、$\bm{ U}_\mathrm{L}\SL - \bm{ U}_\mathrm{R} \SR$となる。
+第三項は、$x=\SR \Delta t$における$0\le t\le \Delta t$での状態なので、
+$\bm{ F}_\mathrm{R}\Delta t$となり、第四項は、同様にして$-\bm{ F}_\mathrm{L}\Delta t$となる。
+したがって、
+\begin{equation}
+\bm{ U}^* = \frac{
+\SR \bm{ U}_\mathrm{R}
+- \SL \bm{ U}_\mathrm{L}
+- \bm{ F}_\mathrm{R} + \bm{ F}_\mathrm{L}
+}{\SR - \SL}
+\label{Ust_hll}
+\end{equation}
+を得る。
+
+保存則を$0\le x\le \SR\Delta t$と $0\le t\le \Delta t$で積分すると、
+\begin{equation}
+    \int_0^{\SR\Delta t} \bm{ U}(\Delta t, x) dx 
+    - \int_0^{\SR\Delta t}\bm{ U}(0, x)dx
+    + \int_{0}^{\Delta t} \bm{ F}(t,\SR\Delta t) dt
+    - \int_{0}^{\Delta t} \bm{ F}(t,0) dt  = 0
+    \label{Fst_hll0}
+\end{equation}
+となり、図\ref{fig:HLL}より、
+\begin{equation}
+\bm{ U}_\mathrm{R} \SR \Delta t - \bm{ U}^* \SR \Delta t  
++ \bm{ F}_\mathrm{R}\Delta t - \bm{ F}^* \Delta t= 0
+\end{equation}
+を得る。
+式(\ref{Ust_hll})を使うと、式(\ref{Fst_hll0})から、
+\begin{screen}
+\begin{equation}
+\bm{ F}^* = \frac{
+\SR \bm{ F}_\mathrm{L}
+- \SL \bm{ R}_\mathrm{R}
++ \SR \SL \left(\bm{ U}_\mathrm{R} - \bm{ U}_\mathrm{L}\right)
+}{\SR - \SL}
+    \label{Fst_hll}
+\end{equation}
+\end{screen}
+を得る。
+
+\begin{screen}
+HLL流束は
+\begin{equation}
+    \bm{ F}_\mathrm{HLL}
+    =\left\{
+    \begin{array}{ll}
+         \bm{ F}_\mathrm{L} & \mathrm{if~\SL > 0} \\
+         \bm{ F}_\mathrm{R} & \mathrm{if~\SR < 0} \\
+         \bm{ F}^* & \mathrm{otherwise} \\
+    \end{array}
+    \right.
+\end{equation}
+\end{screen}
+
+\vspace{1cm}
+
+HLL法では、$\SL$と$\SR$は決まらないので、手で与える必要がある。
+様々な手法が提案されている。
+\begin{equation}
+   \SL = \min(v_{x,\mathrm{L}}, v_{x,\mathrm{R}}) -  
+    \max(c_\mathrm{s,L}, c_\mathrm{s,R}) ,\;\;\;
+   \SR = \max(v_{x,\mathrm{L}}, v_{x,\mathrm{R}}) +  
+    \max(c_\mathrm{s,L}, c_\mathrm{s,R}) 
+\end{equation}
+
+%--------------------------------------------------------
+\clearpage
+\subsubsection{HLLC近似Riemann解法}
+%--------------------------------------------------------
+
+HLLC(HLL-contact discontinuity)法は、HLL法の拡張である\citep{Toro1994}。
+HLL法の中間状態を接触不連続面を介して、２つの状態($\bm{ U}_\mathrm{L}^*,\bm{ U}_\mathrm{R}^*$)
+に分ける。
+
+左右に伝播する波の前後での保存則より、
+\begin{equation}
+    \SL \bm{U}^*_\mathrm{L} - \bm{F}^*_\mathrm{L}
+    = \SL \bm{U}_\mathrm{L} - \bm{F}_\mathrm{L}
+    \label{hllc_sl}
+\end{equation}
+\begin{equation}
+    \SR \bm{ U}_\mathrm{R}^* - \bm{ F}_\mathrm{R}^*
+    = \SR \bm{ U}_\mathrm{R} - \bm{ F}_\mathrm{R}
+    \label{hllc_sr}
+\end{equation}
+を得る。
+
+接触不連続面なので、前後で速度と圧力が等しい。これらを$v^*$と$P^*$とする。
+上の２つの保存式(式\ref{hllc_sl}、\ref{hllc_sr})の質量保存から、
+\begin{equation}
+ \rho_\mathrm{L}^* (\SL - v^*) = \rho_\mathrm{L} (\SL - v_\mathrm{L}) = C_\mathrm{L},\;\;\;
+ \rho_\mathrm{R}^* (\SR - v^*) = \rho_\mathrm{R} (\SR - v_\mathrm{R}) = C_\mathrm{R}
+ \label{hllc_mass}
+\end{equation}
+を得る。ここで、$C_\mathrm{L}$と$C_\mathrm{R}$は左右の波を介した質量流束を表す。
+
+次に上の２つの保存式(式\ref{hllc_sl}、\ref{hllc_sr})の運動量保存から、
+\begin{equation}
+   - P^* + \rho_\mathrm{L}^* v^* (\SL - v^*) = 
+   - P_\mathrm{L} + \rho_\mathrm{L} v_\mathrm{L}(\SL - v_\mathrm{L}),\;\;\;
+   - P^* + \rho_\mathrm{R}^* v^* (\SR - v^*) = 
+   - P_\mathrm{R} + \rho_\mathrm{R} v_\mathrm{R}(\SR - v_\mathrm{R}),\;\;\;
+ \label{hllc_mom}
+\end{equation}
+となる。式(\ref{hllc_mass})を使うと、
+\begin{equation}
+   - P^* + C_\mathrm{L} v^* = 
+   - P_\mathrm{L} + C_\mathrm{L} v_\mathrm{L},\;\;\;
+   - P^* + C_\mathrm{R} v^* = 
+   - P_\mathrm{R} + C_\mathrm{R} v_\mathrm{R}
+ \label{hllc_mom}
+\end{equation}
+となり、$v^*$と$P^*$について解くと、
+\begin{screen}
+\begin{equation}
+    v^* = \frac{ - C_\mathrm{L} v_\mathrm{L} + C_\mathrm{R} v_\mathrm{R} - (P_\mathrm{R} - P_\mathrm{L})}{-C_\mathrm{L} + C_\mathrm{R}} 
+\end{equation}
+\begin{equation}
+    P^* = P_\mathrm{L} + C_\mathrm{L} (v^* - v_\mathrm{L})
+        = P_\mathrm{R} + C_\mathrm{R} (v^* - v_\mathrm{R})
+\end{equation}
+\end{screen}
+となる。これにより接触不連続面の伝播速度$S_\mathrm{M}=v_*$が決まる。
+
+HLL方法と同じ考え方を使うと、$S_\mathrm{L}< S_\mathrm{M}<\SR$の3つの速度の正負で、
+セル境界にある状態には4つの場合がありえる。したがって数値流束は以下で与えられる。
+\begin{screen}
+\begin{equation}
+      \bm{ F}_\mathrm{HLLC} = \left\{
+          \begin{array}{ll}
+             \bm{ F}_\mathrm{L} & \mathrm{for~S_\mathrm{L}>0}\\
+             \bm{ F}_\mathrm{L}^* = \bm{ F}_\mathrm{L} + S_\mathrm{L}\left( \bm{ U}_\mathrm{L}^* - \bm{ U}_\mathrm{L} \right)& \mathrm{for~S_\mathrm{L}\le 0 \le S_\mathrm{M}}\\
+             \bm{ F}_\mathrm{R}^* = \bm{ F}_\mathrm{R} + S_\mathrm{R}\left( \bm{ U}_\mathrm{R}^* - \bm{ U}_\mathrm{R} \right)& \mathrm{for~S_\mathrm{M}\le 0 \le S_\mathrm{R}}\\
+             \bm{ F}_\mathrm{R} & \mathrm{for~S_\mathrm{R}<0}\\
+          \end{array}
+      \right.
+\end{equation}
+\end{screen}
+$\bm{ F}_\mathrm{L}^*$
+と$\bm{ F}_\mathrm{R}^*$を求めるために、$\bm{ U}_\mathrm{L,R}^*$が必要である。
+ここで重要なのは保存則だけを使うことである。
+
+質量保存の式より、
+\begin{equation}
+     \rho_\mathrm{L,R}^* = \rho_\mathrm{L,R} 
+     \frac{S_\mathrm{L,R} - u_\mathrm{L,R}}{ S_\mathrm{L,R} - S_\mathrm{M}}
+\end{equation}
+を得て、エネルギー保存式より、
+\begin{equation}
+  E_\mathrm{L,R}^* = \frac{ \left(S_\mathrm{L,R} - u_\mathrm{L,R}\right) E_\mathrm{L,R}
+  - P_\mathrm{L,R}v_\mathrm{L,R} + P^* S_\mathrm{M}
+  }{ S_\mathrm{L,R} - S_\mathrm{M}}
+\end{equation}
+を得る。中間状態$(\rho_\mathrm{L,R}^*,v^*, P^*, E_\mathrm{L,R}^*)$を使って、
+$\bm{ F}_\mathrm{L,R}^*$を求める。
+
+厳密Riemann解法ではないので、
+HLL系解法では流体変数間の関係は満たされない。例えば、
+\begin{equation}
+    E_\mathrm{L,R}^* \ne \frac{1}{2}\rho_\mathrm{L,R}^* (v^*)^2 + P^*
+\end{equation}
+となるので注意。厳密解法ではもちろん一致する。
+
+
+
+
+%\citep{Einfeldt1991}
+
+
 %--------------------
-\newpage
+\clearpage
 \subsection{プログラミングするための準備}
 %--------------------
 Fortranを使ってプログラミングをおこなうための準備
@@ -148,7 +698,7 @@ Fortranでは、配列のインデックスは整数でなければならない�
 ゴーストセルの数を、自由に変更できるようにするため、{\ttfamily mgn}という変数にする。
 
 図\ref{fig:hydro_mesh}に示すように、
-セル中心境界$x_{i-1/2$を表す配列を{\ttfamily x1f(i)}とし、
+セル中心境界$x_{i-1/2}$を表す配列を{\ttfamily x1f(i)}とし、
 セル中心座標を表す配列$x_i$を{\ttfamily x1v(i)}とする。
 実はfortranでは配列の開始インデックスは任意の整数から始められるが、ここでは
 デフォルトの1とする(C言語の場合0)。
@@ -165,7 +715,7 @@ Fortranでは、配列のインデックスは整数でなければならない�
 
 \begin{figure}[htpb]
     \centering
-    \includegraphics[width=17cm]{hydro_mesh.pdf}
+    \includegraphics[width=17cm]{figures/hydro_mesh.pdf}
     \caption{
     }
     \label{fig:hydro_mesh}
@@ -254,11 +804,11 @@ Fortranでは、配列のインデックスは整数でなければならない�
     \hline
     \multicolumn{2}{|l|}{ {\bf 基本量} (primitive variables){\ttfamily (IDEN=0, IVX=1, IPRE=2)}} \\
     \hline
-    {\ttfamily W(i,IDN)} & $x=x_i$における密度 (要素数 {\ttfamily nxtot}),   \\
+    {\ttfamily Q(i,IDN)} & $x=x_i$における密度 (要素数 {\ttfamily nxtot}),   \\
     \hline
-    {\ttfamily W(i,IV1)} & $x=x_i$における速度 (要素数 {\ttfamily nxtot}) \\
+    {\ttfamily Q(i,IV1)} & $x=x_i$における速度 (要素数 {\ttfamily nxtot}) \\
     \hline
-    {\ttfamily W(i,IPR)} & $x=x_i$における圧力 (要素数 {\ttfamily nxtot}) \\
+    {\ttfamily Q(i,IPR)} & $x=x_i$における圧力 (要素数 {\ttfamily nxtot}) \\
     \hline
     \multicolumn{2}{|l|}{ {\bf 保存量} (primitive variables) {\ttfamily (IDEN=0, IMX=1, IENE=2)}} \\
     \hline
@@ -374,7 +924,7 @@ Fortranでは、配列のインデックスは整数でなければならない�
      \begin{itemize}
         \item まず、セル境界とセル中心の座標の設定をする。
         \begin{itemize}
-            \item {\ttfamily　GenerateGrid( {{\color{red}xf, xv} )}
+            \item {\ttfamily　GenerateGrid( {{\color{red}xf, xv} })} 
         \end{itemize}
         \item 基本量の初期分布を設定する。
         \begin{itemize}
@@ -382,7 +932,7 @@ Fortranでは、配列のインデックスは整数でなければならない�
         \end{itemize}
         \item 保存量に変換
         \begin{itemize}
-            \item {\ttfamily　ConsvVariable( {\color{blue} W}, {\color{red} U} )}
+            \item {\ttfamily　ConsvVariable( {\color{blue} Q}, {\color{red} U} )}
         \end{itemize}
      \end{itemize}
 
@@ -391,15 +941,15 @@ Fortranでは、配列のインデックスは整数でなければならない�
          \item CFL条件を満たすように$\Delta t$を設定する。 
          \begin{itemize}
              \item  {\ttfamily Real(8) Function 
-             TimeControl( {\color{blue}x1a, W} )}
+             TimeControl( {\color{blue}x1a, Q} )}
          \end{itemize}
          \item 境界条件を設定するためにゴーストセルに適切な値を代入する。
          \begin{itemize}
-             \item  {\ttfamily BoundaryCondition({\color{red} W})}
+             \item  {\ttfamily BoundaryCondition( {\color{red} Q} )}
            \end{itemize}
            \item 数値流束を求める。 
            \begin{itemize}
-               \item  {\ttfamily NumericalFlux( {\color{blue} x1a, xv, W}, {\color{red} F} )}
+               \item  {\ttfamily NumericalFlux( {\color{blue} x1a, xv, Q}, {\color{red} F} )}
            \end{itemize}
           \item 保存量を更新する。 
           \begin{itemize}
@@ -409,13 +959,13 @@ Fortranでは、配列のインデックスは整数でなければならない�
           
           \item 保存量から基本量を求める。
           \begin{itemize}
-              \item  {\ttfamily PrimVariable({\color{blue} U}, {\color{red} W})}
+              \item  {\ttfamily PrimVariable( {\color{blue} U}, {\color{red} Q} )}
           \end{itemize}
           
 
           \item 必要なら結果を出力する。
           \begin{itemize}
-              \item {\ttfamily Output( {\color{blue} x1a, x1b, U, W} )}
+              \item {\ttfamily Output( {\color{blue} x1a, x1b, U, Q} )}
           \end{itemize}
           
           \item 時間を更新し ({\ttfamily time = time + dt})、シミュレーションの終了条件を満たしているか確認し、満たしていたらメインループを抜ける。満たしていなかったら、メインループの始めに戻る。
@@ -426,7 +976,7 @@ Fortranでは、配列のインデックスは整数でなければならない�
 
 \begin{figure}[h]
     \centering
-    \includegraphics[width=5cm]{flowchart_HD1.pdf}
+    \includegraphics[width=5cm]{figures/flowchart_HD1.pdf}
     \caption{サンプルプログラムの計算手順のフローチャート。
     }
     \label{fig:fc_HD1}
@@ -511,18 +1061,19 @@ P_\mathrm{R} \\
 \right)
 \end{equation}
 である。
+伝統的にSod解での比熱比は$\gamma=1.4$が使われる。
 
 計算結果と比較するための解析解を生成する{\ttfamily python}スクリプト({\ttfamily RiemannSolver.py})を用意した。
 すでに生成したファイル{\ttfamily sod\_ana.dat}(時刻$t=0.2$での解析解。
 １列目は$x$、２列目は$\rho$、３列目は$v$、４列目は$P$。)をディレクトリの中に入れている。
-図\ref{fig:sodana}
-厳密解を図示
-左のガスの方が高圧なので、左のガスから右のガスが押されて、
+ 
+図\ref{fig:sodana}は$t=0.2$における厳密解を表す。
+左のガスの方が高圧なので、右のガスから左のガスが押されて、
 右のガスに衝撃波が伝わり、逆に右のガスには希薄波が生じる。
 
 \begin{figure}[htpb]
     \centering
-    \includegraphics[width=10cm]{sod.pdf}
+    \includegraphics[width=8cm]{figures/sod.pdf}
     \caption{$t=0.2$におけるSod解}
     \label{fig:sodana}
 \end{figure}
@@ -608,11 +1159,11 @@ P_\mathrm{R} \\
 \end{itemize}
 
 
-\subsubsection{課題1}
+\subsubsection{課題}
 
 サンプルプログラムに以下を実装し
 \begin{itemize}
-    \item HLL法 (HLL法を実装したあと余力があればHLLC法も)
+    \item 数値流束 HLL法 (HLL法を実装したあと余力があればHLLC法も)
     \item outflow境界条件の設定(すべての基本量の勾配を境界で0にする)
     {\ttfamily BoundaryCondition}
 \end{itemize}
@@ -686,8 +1237,8 @@ $\delta v$を消去すると、以下の$\delta \rho$についての波動方程
 
 %一次元流体方程式を有限体積法を使って離散化すると，
 %\begin{equation}
-%    {\bf U}_{i}^{n+1} = {\bf U}_{i}^n 
-%    - \frac{\Delta t}{\Delta x}\left( {\bf F}_{i+1/2}^{n+1/2} - {\bf F}_{i-1/2}^{n+1/2} \right)
+%    \bm{ U}_{i}^{n+1} = \bm{ U}_{i}^n 
+%    - \frac{\Delta t}{\Delta x}\left( \bm{ F}_{i+1/2}^{n+1/2} - \bm{ F}_{i-1/2}^{n+1/2} \right)
 %\end{equation}
 %を得る。
 

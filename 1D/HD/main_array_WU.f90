@@ -1,223 +1,200 @@
-      module commons
-      implicit none
-      integer::ntime                        ! counter of the timestep
-      integer,parameter::ntimemax=20000     ! the maximum timesteps
-      real(8)::time,dt                    ! time, timewidth
-      data time / 0.0d0 /
-      real(8),parameter:: timemax=0.2d0   
-      real(8),parameter:: dtout=5.0d-3
+module commons
+implicit none
+integer::ntime                        ! counter of the timestep
+integer,parameter::ntimemax=20000     ! the maximum timesteps
+real(8)::time,dt                    ! time, timewidth
+data time / 0.0d0 /
+real(8),parameter:: timemax=0.2d0   
+real(8),parameter:: dtout=5.0d-3
 
-      integer,parameter::ngrid=128        ! the number of grids in the simulation box
-      integer,parameter::mgn=2            ! the number of ghost cells
-      integer,parameter::in=ngrid+2*mgn+1 ! the total number of grids including ghost cells
-      integer,parameter::is=mgn+1         ! the index of the leftmost grid
-      integer,parameter::ie=ngrid+mgn     ! the index of the rightmost grid
-      integer,parameter::nflux = 3
-      real(8),parameter:: x1min=-0.5d0,x1max=0.5d0
+integer,parameter::nx=128       ! the number of grids in the simulation box
+integer,parameter::mgn=2            ! the number of ghost cells
+integer,parameter::nxtot=nx+2*mgn+1 ! the total number of grids including ghost cells
+integer,parameter::is=mgn+1         ! the index of the leftmost grid
+integer,parameter::ie=nx+mgn     ! the index of the rightmost grid
+integer,parameter::nflux = 3
+real(8),parameter:: x1min=-0.5d0,x1max=0.5d0
 
-      integer, parameter :: IDN = 1
-      integer, parameter :: IM1 = 2
-      integer, parameter :: IPR = 3
-      integer, parameter :: NVAR = 3
+integer, parameter :: IDN = 1
+integer, parameter :: IMX = 2
+integer, parameter :: IPR = 3
+integer, parameter :: NVAR = 3
 
-      integer, parameter :: IV1 = 2
-      integer, parameter :: IEN = 3
+integer, parameter :: IVX = 2
+integer, parameter :: IEN = 3
 
-      end module commons
+real(8),parameter::gam=1.4d0 !! adiabatic index
+
+end module commons
      
-      module eosmod
-      implicit none
-! adiabatic
-!      real(8),parameter::gam=5.0d0/3.0d0 !! adiabatic index
-      real(8),parameter::gam=1.4d0 !! adiabatic index
-! isothermal
-!      real(8)::csiso  !! isothemal sound speed
-      end module eosmod
+program main
+use commons
+implicit none
 
-      program main
-      use commons
-      implicit none
-
-      real(8),dimension(in)::x1b,x1c
-      real(8),dimension(in,NVAR) :: U
-      real(8),dimension(in,NVAR) :: W
-      real(8),dimension(in,NVAR) :: flux
+real(8),dimension(nxtot)::x1b,x1c
+real(8),dimension(nxtot,NVAR) :: U ! conservative variables
+real(8),dimension(nxtot,NVAR) :: Q ! primitive variables
+real(8),dimension(nxtot,NVAR) :: F ! numerical flux
 
       write(6,*) "setup grids and initial condition"
       call GenerateGrid(x1b, x1c)
-      call GenerateProblem(x1c, W)
-      call ConsvVariable(W, U)
-      call Output( x1b, x1c, W )
+      call GenerateProblem(x1c, Q)
+      call ConsvVariable(Q, U)
+      call Output( x1b, x1c, Q )
 
 ! main loop
-      mloop: do ntime=1,ntimemax
-         call TimestepControl(x1b, W)
+      do !ntime=1,ntimemax
+         call TimestepControl(x1b, Q)
          if( time + dt > timemax ) dt = timemax - time
-         call BoundaryCondition(W)
-         call NumericalFlux(W, flux)
-         call UpdateConsv( flux, U )
-         call PrimVariable( U, W )
+         call BoundaryCondition(Q)
+         call NumericalFlux(Q, F)
+         call UpdateConsv( F, U )
+         call PrimVariable( U, Q )
          time=time+dt
-         call Output( x1b, x1c, W)
+         call Output( x1b, x1c, Q)
 
-         if(time >= timemax) exit mloop
-      enddo mloop
-      call Output( x1b, x1c, W)
+         if(time >= timemax) exit 
+      enddo 
+      call Output( x1b, x1c, Q)
 
       write(6,*) "program has been finished"
 contains
 
-      subroutine GenerateGrid(x1b, x1c)
-      use commons
-      use eosmod
-      implicit none
-      real(8), intent(out) :: x1b(:), x1c(:)
-      real(8) :: dx,dy
-      integer::i
-      dx=(x1max-x1min)/ngrid
-      do i=1,in
+subroutine GenerateGrid(x1b, x1c)
+use commons
+implicit none
+real(8), intent(out) :: x1b(:), x1c(:)
+real(8) :: dx,dy
+integer::i
+
+    dx=(x1max-x1min)/nx
+    do i=1,nxtot
          x1b(i) = dx*(i-(mgn+1))+x1min
-      enddo
-      do i=1,in-1
+    enddo
+    do i=1,nxtot-1
          x1c(i) = 0.5d0*(x1b(i+1)+x1b(i))
-      enddo
+    enddo
 
-      return
-      end subroutine GenerateGrid
+return
+end subroutine GenerateGrid
 
-      subroutine GenerateProblem(x1c, W)
-      use commons
-      use eosmod
-      implicit none
-      integer::i
-      real(8), intent(in ) :: x1c(:)
-      real(8), intent(out) :: W(:,:)
-      real(8) :: rho1,rho2,Lsm,u1,u2
+subroutine GenerateProblem(x1c, Q)
+use commons
+implicit none
+integer::i
+real(8), intent(in ) :: x1c(:)
+real(8), intent(out) :: Q(:,:)
+real(8) :: rho1,rho2,Lsm,u1,u2
+real(8)::pi
 
-      real(8)::pi
       pi=acos(-1.0d0)
 
       do i=is,ie
          if( x1c(i) < 0.0d0 ) then 
-             W(i,IDN) = 1.0d0
-             W(i,IV1) = 0.0d0
-             W(i,IPR) = 1.0d0
-         else 
-             W(i,IDN) = 0.125d0
-             W(i,IV1) = 0.0d0
-             W(i,IPR) = 0.1d0
+             Q(i,IDN) = 1.0d0
+             Q(i,IVX) = 0.0d0
+             Q(i,IPR) = 1.0d0
+        else 
+             Q(i,IDN) = 0.125d0
+             Q(i,IVX) = 0.0d0
+             Q(i,IPR) = 0.1d0
          endif
       enddo
 
-      
-!      call BoundaryCondition
+return
+end subroutine GenerateProblem
 
-      return
-      end subroutine GenerateProblem
+subroutine BoundaryCondition(Q)
+use commons
+implicit none
+real(8), intent(inout) :: Q(:,:)
+integer::i
 
-      subroutine BoundaryCondition(W)
-      use commons
-      implicit none
-      real(8), intent(inout) :: W(:,:)
-      integer::i
+    do i=1,mgn 
+         Q(is-i,IDN)  = Q(is-1+i,IDN)
+         Q(is-i,IVX)  = Q(is-1+i,IVX)
+         Q(is-i,IPR)  = Q(is-1+i,IPR)
+    enddo
 
-      do i=1,mgn
-!          d(i) =  d(ie-mgn+i)
-!          v(i) = v(ie-mgn+i)
-!          p(i) = p(ie-mgn+i)
-          W(is-i,IDN)  = W(is-1+i,IDN)
-          W(is-i,IV1)  = W(is-1+i,IV1)
-          W(is-i,IPR)  = W(is-1+i,IPR)
-      enddo
+    do i=1,mgn
+         Q(ie+i,IDN) = Q(ie-i+1,IDN)
+         Q(ie+i,IVX) = Q(ie-i+1,IVX)
+         Q(ie+i,IPR) = Q(ie-i+1,IPR)
+    enddo
 
-      do i=1,mgn
-!           d(ie+i) =  d(is+i-1)
-!          v(ie+i) = v(is+i-1)
-!          p(ie+i) = p(is+i-1)
-
-          W(ie+i,IDN) = W(ie-i+1,IDN)
-          W(ie+i,IV1) = W(ie-i+1,IV1)
-          W(ie+i,IPR) = W(ie-i+1,IPR)
-      enddo
-
-      return
-      end subroutine BoundaryCondition
+return
+end subroutine BoundaryCondition
 !
-      subroutine ConsvVariable(W, U)
-      use commons
-      use eosmod
-      implicit none
-      real(8), intent(in) :: W(:,:)
-      real(8), intent(out) :: U(:,:)
-      integer::i
+subroutine ConsvVariable(Q, U)
+use commons
+implicit none
+real(8), intent(in) :: Q(:,:)
+real(8), intent(out) :: U(:,:)
+integer::i
 
-      do i=is,ie
-          U(i,IDN) = W(i,IDN)
-          U(i,IM1) = W(i,IDN)*W(i,IV1)
-          U(i,IEN)  = 0.5d0*W(i,IDN)*W(i,IV1)**2 + W(i,IPR)/(gam - 1.0d0)
-      enddo
+    do i=is,ie
+        U(i,IDN) = Q(i,IDN)
+        U(i,IMX) = Q(i,IDN)*Q(i,IVX)
+        U(i,IEN)  = 0.5d0*Q(i,IDN)*Q(i,IVX)**2 + Q(i,IPR)/(gam - 1.0d0)
+    enddo
       
-      return
-      end subroutine Consvvariable
+return
+end subroutine Consvvariable
 
-      subroutine PrimVariable( U, W )
-      use commons
-      use eosmod
-      implicit none
-      real(8), intent(in) :: U(:,:)
-      real(8), intent(out) :: W(:,:)
-      integer::i
+subroutine PrimVariable( U, Q )
+use commons
+implicit none
+real(8), intent(in) :: U(:,:)
+real(8), intent(out) :: Q(:,:)
+integer::i
 
-      do i=is,ie
-           W(i,IDN) = U(i,IDN)
-           W(i,IV1) = U(i,IM1)/U(i,IDN)
-           W(i,IPR) = ( U(i,IEN) - 0.5d0*U(i,IM1)**2/U(i,IDN) )*(gam-1.0d0)
-      enddo
+    do i=is,ie
+        Q(i,IDN) = U(i,IDN)
+        Q(i,IVX) = U(i,IMX)/U(i,IDN)
+        Q(i,IPR) = ( U(i,IEN) - 0.5d0*U(i,IMX)**2/U(i,IDN) )*(gam-1.0d0)
+    enddo
 
-      return
-      end subroutine PrimVariable
+return
+end subroutine PrimVariable
 
-      subroutine TimestepControl(x1b, W)
-      use commons
-      use eosmod
-      implicit none
-      real(8), intent(in) :: x1b(:), W(:,:)
-      real(8)::dtl1
-      real(8)::dtl2
-      real(8)::dtl3
-      real(8)::dtlocal
-      real(8)::dtmin
-      integer::i
+subroutine TimestepControl(x1b, Q)
+use commons
+implicit none
+real(8), intent(in) :: x1b(:), Q(:,:)
+real(8)::dtl1
+real(8)::dtlocal
+real(8)::dtmin
+integer::i
 
-      dtmin=1.0d90
+    dtmin=1.0d90
 
-      do i=is,ie
-         dtlocal =(x1b(i+1)-x1b(i))/(abs(W(i,IV1)) + dsqrt(gam*W(i,IPR)/W(i,IDN)))
+    do i=is,ie
+        dtlocal =(x1b(i+1)-x1b(i))/(abs(Q(i,IVX)) + dsqrt(gam*Q(i,IPR)/Q(i,IDN)))
          if(dtlocal .lt. dtmin) dtmin = dtlocal
-      enddo
+    enddo
 
-      dt = 0.3d0 * dtmin
-!      write(6,*)"dt",dt
-      return
-      end subroutine TimestepControl
+    dt = 0.3d0 * dtmin
 
-      subroutine vanLeer(n,dvp,dvm,dv)
-      implicit none
-      real(8),intent(in)::dvp(:),dvm(:)
-      real(8),intent(out)::dv(:)
-      integer,intent(in) :: n
-      integer :: i
+return
+end subroutine TimestepControl
 
-      do i=1,n
-         if(dvp(i)*dvm(i) .gt. 0.0d0)then
+subroutine vanLeer(n,dvp,dvm,dv)
+implicit none
+real(8),intent(in)::dvp(:),dvm(:)
+real(8),intent(out)::dv(:)
+integer,intent(in) :: n
+integer :: i
+
+    do i=1,n
+        if(dvp(i)*dvm(i) .gt. 0.0d0)then
             dv(i) =2.0d0*dvp(i)*dvm(i)/(dvp(i)+dvm(i))
-         else
+        else
             dv(i) = 0.0d0
-         endif
-      enddo
+        endif
+    enddo
 
-      return
-      end subroutine vanLeer
+return
+end subroutine vanLeer
 !
 !
 !
@@ -237,347 +214,201 @@ contains
 !      return
 !      end subroutine MClimiter
 !
-      subroutine NumericalFlux( W, flux )
-      use commons !, only: is, ie, in
-      implicit none
-      integer::i
-      real(8), intent(in) :: W(:,:)
-      real(8), intent(out) :: flux(:,:)
-      real(8),dimension(in,NVAR):: Wl,Wr
-      real(8),dimension(NVAR):: flx
-      real(8) :: dWm(NVAR), dWp(NVAR), dWmon(NVAR)
-      real(8) :: ddmon, dvmon, dpmon
+subroutine NumericalFlux( Q, F )
+use commons !, only: is, ie, in
+implicit none
+real(8), intent(in) :: Q(:,:)
+real(8), intent(out) :: F(:,:)
+integer::i
+real(8),dimension(nxtot,NVAR):: Ql,Qr
+real(8),dimension(NVAR):: flx
+real(8) :: dQm(NVAR), dQp(NVAR), dQmon(NVAR)
+real(8) :: ddmon, dvmon, dpmon
 
-      do i=is-1,ie+1
-         dWp(:) = W(i+1,:) - W(i  ,:)
-         dWm(:) = W(i  ,:) - W(i-1,:)
+    do i=is-1,ie+1
+        dQp(:) = Q(i+1,:) - Q(i  ,:)
+        dQm(:) = Q(i  ,:) - Q(i-1,:)
 
-         call vanLeer(NVAR, dWp,dWm,dWmon)
+        call vanLeer(NVAR, dQp,dQm,dQmon)
 
-         Wl(i+1,:) = W(i,:) + 0.5d0*dWmon(:)*0.0d0
-         Wr(i  ,:) = W(i,:) - 0.5d0*dWmon(:)*0.0d0
-      enddo
+        Ql(i+1,:) = Q(i,:) + 0.5d0*dQmon(:)*0.0d0
+        Qr(i  ,:) = Q(i,:) - 0.5d0*dQmon(:)*0.0d0
+    enddo
 
 !         call HLLE(leftst,rigtst,nflux)
-      do i=is,ie+1
-         call HLLE(Wl(i,:),Wr(i,:),flx)
-         flux(i,:)  = flx(:)
-      enddo
+    do i=is,ie+1
+!        call HLL(Ql(i,:),Qr(i,:),flx)
+        call Lax((x1b(i) - x1b(i-1))/dt,Ql(i,:),Qr(i,:),flx)
+        F(i,:)  = flx(:)
+    enddo
 
-      return
-      end subroutine Numericalflux
+return
+end subroutine Numericalflux
 
-!      subroutine HLLE(leftst,rigtst,nflux)
-      subroutine HLLE(Wl,Wr,flx)
-      use commons !, only : is, ie, NVAR
-      use eosmod
-      implicit none
-      real(8),intent(in)::Wl(:), Wr(:)
-      real(8),intent(out) :: flx(:)
-      real(8):: Ul(NVAR), Ur(NVAR)
-      real(8):: Fl(NVAR), Fr(NVAR)
-      real(8):: csl,csr
-      real(8):: sl, sr
-      real(8):: dfluxl, dfluxr
-      real(8):: mvl, mvr, mvfluxl, mvfluxr
-      real(8):: etl, etr, etfluxl, etfluxr
-      integer :: i, n
+subroutine HLL(Ql,Qr,flx)
+use commons !, only : is, ie, NVAR
+implicit none
+real(8),intent(in)::Ql(:), Qr(:)
+real(8),intent(out) :: flx(:)
+integer :: i, n
+real(8):: Ul(NVAR), Ur(NVAR)
+real(8):: Fl(NVAR), Fr(NVAR)
+real(8):: csl,csr
+real(8):: sl, sr
 
-          ! conserved variables in the left and right states
-          Ul(IDN) = Wl(IDN)
-          Ur(IDN) = Wr(IDN)
+    ! conserved variables in the left and right states
+    Ul(IDN) = Ql(IDN)
+    Ur(IDN) = Qr(IDN)
 
-          Ul(IM1) = Wl(IDN)*Wl(IV1)
-          Ur(IM1) = Wr(IDN)*Wr(IV1)
+    Ul(IMX) = Ql(IDN)*Ql(IVX)
+    Ur(IMX) = Qr(IDN)*Qr(IVX)
 
-          Ul(IEN) = 0.5d0*Wl(IDN)*Wl(IV1)**2 + Wl(IPR)/(gam - 1.0d0)
-          Ur(IEN) = 0.5d0*Wr(IDN)*Wr(IV1)**2 + Wr(IPR)/(gam - 1.0d0)
+    Ul(IEN) = 0.5d0*Ql(IDN)*Ql(IVX)**2 + Ql(IPR)/(gam - 1.0d0)
+    Ur(IEN) = 0.5d0*Qr(IDN)*Qr(IVX)**2 + Qr(IPR)/(gam - 1.0d0)
 
-          ! flux in the left and right states
-          Fl(IDN) = Ul(IM1)
-          Fr(IDN) = Ur(IM1)
+    ! flux in the left and right states
+    Fl(IDN) = Ul(IMX)
+    Fr(IDN) = Ur(IMX)
 
-          Fl(IM1) = Wl(IPR) + Wl(IDN)*Wl(IV1)**2 
-          Fr(IM1) = Wr(IPR) + Wr(IDN)*Wr(IV1)**2 
+    Fl(IMX) = Ql(IPR) + Ql(IDN)*Ql(IVX)**2 
+    Fr(IMX) = Qr(IPR) + Qr(IDN)*Qr(IVX)**2 
 
 
-          Fl(IEN) = ( gam*Wl(IPR)/(gam - 1.0d0) + 0.5d0*Wl(IDN)*Wl(IV1)**2)*Wl(IV1)
-          Fr(IEN) = ( gam*Wr(IPR)/(gam - 1.0d0) + 0.5d0*Wr(IDN)*Wr(IV1)**2)*Wr(IV1)
+    Fl(IEN) = ( gam*Ql(IPR)/(gam - 1.0d0) + 0.5d0*Ql(IDN)*Ql(IVX)**2)*Ql(IVX)
+    Fr(IEN) = ( gam*Qr(IPR)/(gam - 1.0d0) + 0.5d0*Qr(IDN)*Qr(IVX)**2)*Qr(IVX)
 
-          csl = dsqrt(gam*Wl(IPR)/Wl(IDN))
-          csr = dsqrt(gam*Wr(IPR)/Wr(IDN))
+    csl = dsqrt(gam*Ql(IPR)/Ql(IDN))
+    csr = dsqrt(gam*Qr(IPR)/Qr(IDN))
 
-          sl = min(Wl(IV1),Wr(IV1)) - max(csl,csr)
-          sr = max(Wl(IV1),Wr(IV1)) + max(csl,csr)
+    sl = min(Ql(IVX),Qr(IVX)) - max(csl,csr)
+    sr = max(Ql(IVX),Qr(IVX)) + max(csl,csr)
 
-          do n=1,NVAR
-             flx(n)  = (sr*Fl(n) - sl*Fr(n) + sl*sr*( Ur(n) - Ul(n) ))/(sr - sl)
-          enddo
+    if( sl > 0.0d0 ) then 
+        do n=1,NVAR
+            flx(n) = Fl(n)
+        enddo
+    else if (sr < 0.0d0 ) then
+        do n=1,NVAR
+             flx(n) = Fr(n)
+        enddo
+    else 
+        do n=1,NVAR
+            flx(n)  = (sr*Fl(n) - sl*Fr(n) + sl*sr*( Ur(n) - Ul(n) ))/(sr - sl)
+        enddo
+    endif
 
-      return
-      end subroutine HLLE
+return
+end subroutine HLL
 !
-!      subroutine HLLC(dl,vl,pl,dr,vr,pr)
-!!=====================================================================
-!!
-!! HLLC Scheme
-!!
-!! Purpose
-!! Calculation of Numerical Flux by HLLC method
-!!
-!! Reference
-!!  Toro EF, Spruce M, Speares W. (1992,1994)
-!!
-!! Input
-!! Output
-!!=====================================================================
-!      use fluxmod, only: dflux, mvflux, etflux 
-!
-!      implicit none
-!      real(8),dimension(in),intent(in) :: dl, dr, vl, vr, pl, pr
-!
-!!----- U -----
-!! qql :: left state
-!! qqr :: right state
-!      real(8) :: rol,vxl,vyl,vzl,ptl,eel
-!      real(8) :: ror,vxr,vyr,vzr,ptr,eer
-!      real(8) :: rxl,ryl,rzl
-!      real(8) :: rxr,ryr,rzr
-!      real(8) :: ptst
-!
-!!----- U* ----
-!! qqlst ::  left state
-!! qqrst :: right state
-!      real(8) :: rolst,vxlst,vylst,vzlst,eelst
-!      real(8) :: rorst,vxrst,vyrst,vzrst,eerst
-!      real(8) :: rxlst,rylst,rzlst
-!      real(8) :: rxrst,ryrst,rzrst
-!
-!!----- flux ---
-!! fqql ::  left physical flux
-!! fqqr :: right physical flux
-!      real(8) :: frol,frxl,fryl,frzl,feel
-!      real(8) :: fror,frxr,fryr,frzr,feer
-!
-!!----- wave speed ---
-!! sl ::  left-going fastest signal velocity
-!! sr :: right-going fastest signal velocity
-!! sm :: contact discontinuity velocity
-!! slst ::  left-going alfven velocity
-!! srst :: right-going alfven velocity
-!      real(8) :: sm,sl,sr
-!
-!! cfl :: left-state Fast wave velocity
-!! cfr :: right-sate Fast wave velocity
-!      real(8) :: cfl,cfr
-!
-!!--------------------
-!! temporary variables
-!      real(8) :: sdl,sdr,sdml,sdmr,isdml,isdmr,rosdl,rosdr
-!      real(8) :: temp
-!  
-!! no if
-!      real(8) :: sign1,maxs1,mins1
-!      real(8) :: msl,msr
-!
-!!----- Step 0. ----------------------------------------------------------|
-!
-!!---- Left state
-!        
-!        rol = leftst(mudn)
-!        eel = leftst(muet)
-!        rxl = leftst(muvu)
-!        ryl = leftst(muvv)
-!        rzl = leftst(muvw)
-!        vxl = leftst(muvu)/leftst(mudn)
-!        vyl = leftst(muvv)/leftst(mudn)
-!        vzl = leftst(muvw)/leftst(mudn)
-!        ptl = leftst(mpre)
-!
-!!---- Right state
-!        
-!        ror = rigtst(mudn)
-!        eer = rigtst(muet)
-!        rxr = rigtst(muvu)
-!        ryr = rigtst(muvv)
-!        rzr = rigtst(muvw)
-!        vxr = rigtst(muvu)/rigtst(mudn)
-!        vyr = rigtst(muvv)/rigtst(mudn)
-!        vzr = rigtst(muvw)/rigtst(mudn)
-!        ptr = rigtst(mpre)
-!!----- Step 1. ----------------------------------------------------------|
-!! Compute wave left & right wave speed
-!!
-!         
-!        cfl = leftst(mcsp)
-!        cfr = rigtst(mcsp)
-!
-!        sl = min(vxl,vxr)-max(cfl,cfr) ! note sl is negative
-!        sr = max(vxl,vxr)+max(cfl,cfr)
-!!----- Step 2. ----------------------------------------------------------|
-!! compute L/R fluxs
-!!
-!! Left value
-!        frol = leftst(mfdn)
-!        feel = leftst(mfet)
-!        frxl = leftst(mfvu)
-!        fryl = leftst(mfvv)
-!        frzl = leftst(mfvw)
-!
-!! Right value
-!! Left value
-!        fror = rigtst(mfdn)
-!        feer = rigtst(mfet)
-!        frxr = rigtst(mfvu)
-!        fryr = rigtst(mfvv) 
-!        frzr = rigtst(mfvw)
-!
-!!----- Step 4. ----------------------------------------------------------|
-!! compute middle and alfven wave
-!!
-!        sdl = sl - vxl
-!        sdr = sr - vxr
-!        rosdl = rol*sdl
-!        rosdr = ror*sdr
-!
-!        temp = 1.0d0/(rosdr - rosdl)
-!! Eq. 45
-!        sm = (rosdr*vxr - rosdl*vxl - ptr + ptl)*temp
-!           
-!        sdml = sl - sm; isdml = 1.0d0/sdml
-!        sdmr = sr - sm; isdmr = 1.0d0/sdmr
-!        
-!!----- Step 5. ----------------------------------------------------------|
-!! compute intermediate states
-!!
-!! Eq. 49
-!        ptst = (rosdr*ptl-rosdl*ptr+rosdl*rosdr*(vxr-vxl))*temp
-!
-!!----- Step 5A. ----------------------------------------------------------|
-!! compute Ul*
-!!
-!
-!        rolst = rol*sdl   *isdml
-!        vxlst = sm
-!        rxlst = rolst*vxlst
-!           
-!        vylst = vyl
-!        rylst = rolst*vylst
-!        vzlst = vzl
-!        rzlst = rolst*vzlst
-!
-!        eelst =(sdl*eel - ptl*vxl + ptst*sm  )*isdml
-!
-!!----- Step 5B. ----------------------------------------------------------|
-!! compute Ur*
-!!
-!
-!        rorst   = rosdr   *isdmr
-!        vxrst = sm
-!        rxrst = rorst*vxrst
-!        vyrst = vyr
-!        ryrst = rorst*vyrst
-!        vzrst = vzr
-!        rzrst = rorst*vzrst
-!           
-!        eerst = (sdr*eer - ptr*vxr  + ptst*sm  )*isdmr
-!              
-!!----- Step 6. ----------------------------------------------------------|
-!! compute flux
-!        sign1 = sign(1.0d0,sm)    ! 1 for sm>0, -1 for sm<0
-!        maxs1 =  max(0.0d0,sign1) ! 1 sm>0, 0 for sm<0
-!        mins1 = -min(0.0d0,sign1) ! 0 sm>0,-1 for sm<0
-!
-!        msl   = min(sl  ,0.0d0)   ! 0 for sl > 0, sl for sl < 0
-!        msr   = max(sr  ,0.0d0)   ! S_R > 0
-!
-!        nflux(mden) = (frol+msl*(rolst-rol))*maxs1 &
-!     &               +(fror+msr*(rorst-ror))*mins1
-!        nflux(meto) = (feel+msl*(eelst-eel))*maxs1 &
-!     &               +(feer+msr*(eerst-eer))*mins1
-!        nflux(mrvu) = (frxl+msl*(rxlst-rxl))*maxs1 &
-!     &               +(frxr+msr*(rxrst-rxr))*mins1
-!        nflux(mrvv) = (fryl+msl*(rylst-ryl))*maxs1 &
-!     &               +(fryr+msr*(ryrst-ryr))*mins1
-!        nflux(mrvw) = (frzl+msl*(rzlst-rzl))*maxs1 &
-!     &               +(frzr+msr*(rzrst-rzr))*mins1
-!
-!      return
-!      end subroutine HLLC
+subroutine Lax(dxdt,Ql,Qr,flx)
+use commons !, only : is, ie, NVAR
+implicit none
+real(8),intent(in)::Ql(:), Qr(:)
+real(8),intent(in)::dxdt
+real(8),intent(out) :: flx(:)
+integer :: i, n
+real(8):: Ul(NVAR), Ur(NVAR)
+real(8):: Fl(NVAR), Fr(NVAR)
+real(8):: csl,csr
+real(8):: sl, sr
 
-      subroutine UpdateConsv( flux, U )
-      use commons
-      implicit none
-      real(8), intent(in)  :: flux(:,:)
-      real(8), intent(out) :: U(:,:)
-      integer::i,n
+    ! conserved variables in the left and right states
+    Ul(IDN) = Ql(IDN)
+    Ur(IDN) = Qr(IDN)
 
-      do n=1,NVAR
-      do i=is,ie
-         U(i,n) = U(i,n) + dt*(- flux(i+1,n) + flux(i,n))/(x1b(i+1)-x1b(i)) 
-      enddo
-      enddo
+    Ul(IMX) = Ql(IDN)*Ql(IVX)
+    Ur(IMX) = Qr(IDN)*Qr(IVX)
 
-      return
-      end subroutine UpdateConsv
+    Ul(IEN) = 0.5d0*Ql(IDN)*Ql(IVX)**2 + Ql(IPR)/(gam - 1.0d0)
+    Ur(IEN) = 0.5d0*Qr(IDN)*Qr(IVX)**2 + Qr(IPR)/(gam - 1.0d0)
 
-      subroutine Output( x1b, x1c, W )
-      use commons
-      implicit none
-      real(8), intent(in) :: x1b(:), x1c(:), W(:,:)
-      integer::i
-      character(20),parameter::dirname="snap/"
-      character(40)::filename
-      real(8),save::tout
-      data tout / 0.0d0 /
-      integer::nout
-      data nout / 1 /
-      integer,parameter:: unitout=17
-      integer,parameter:: unitbin=13
-      integer,parameter:: gs=1
+    ! flux in the left and right states
+    Fl(IDN) = Ul(IMX)
+    Fr(IDN) = Ur(IMX)
 
-      logical, save:: is_inited
-      data is_inited /.false./
+    Fl(IMX) = Ql(IPR) + Ql(IDN)*Ql(IVX)**2 
+    Fr(IMX) = Qr(IPR) + Qr(IDN)*Qr(IVX)**2 
 
-      if (.not. is_inited) then
-         call makedirs("snap")
-         is_inited =.true.
-      endif
+    Fl(IEN) = ( gam*Ql(IPR)/(gam - 1.0d0) + 0.5d0*Ql(IDN)*Ql(IVX)**2)*Ql(IVX)
+    Fr(IEN) = ( gam*Qr(IPR)/(gam - 1.0d0) + 0.5d0*Qr(IDN)*Qr(IVX)**2)*Qr(IVX)
 
-      print*, time, tout+dtout, time+1.0d-14 .lt. tout+dtout
-      if(time + 1.0d-14.lt. tout+dtout) return
+    do n=1,NVAR 
+        flx(n)  = 0.5d0*(Fl(n) + Fr(n)) - 0.5d0*dxdt*(Ur(n) - Ul(n))
+    enddo
 
-      write(filename,'(a1,i5.5,a4)')"t",nout,".dat"
-      filename = trim(dirname)//filename
+
+return
+end subroutine Lax
+!
+!
+subroutine UpdateConsv( F, U )
+use commons
+implicit none
+real(8), intent(in)  :: F(:,:)
+real(8), intent(out) :: U(:,:)
+integer::i,n
+
+    do n=1,NVAR
+        do i=is,ie
+            U(i,n) = U(i,n) + dt*(- F(i+1,n) + F(i,n))/(x1b(i+1)-x1b(i)) 
+        enddo
+    enddo
+
+return
+end subroutine UpdateConsv
+
+subroutine Output( x1b, x1c, Q )
+use commons
+implicit none
+real(8), intent(in) :: x1b(:), x1c(:), Q(:,:)
+integer::i
+character(20),parameter::dirname="snap/"
+character(40)::filename
+real(8),save::tout
+data tout / 0.0d0 /
+integer::nout
+data nout / 1 /
+integer,parameter:: unitout=17
+integer,parameter:: unitbin=13
+integer,parameter:: gs=1
+
+logical, save:: is_inited
+data is_inited /.false./
+
+    if (.not. is_inited) then
+        call makedirs("snap")
+        is_inited =.true.
+    endif
+
+    print*, time, tout+dtout, time+1.0d-14 .lt. tout+dtout
+    if(time + 1.0d-14.lt. tout+dtout) return
+
+    write(filename,'(a3,i5.5,a4)')"lax",nout,".dat"
+    filename = trim(dirname)//filename
 !      open(unitbin,file=filename,status='replace',form='formatted') 
-      open(unitbin,file=filename,form='formatted',action="write")
-      write(unitbin,"(a2,f6.4)") "# ",time
-      write(unitbin,*) "# x, density, velocity, pressure"
-      do i=1,in-1
-          write(unitbin,*) x1c(i), W(i,IDN), W(i,IV1), W(i,IPR)
-!          write(*,*) x1c(i), d(i), v(i), p(i)
-      enddo
-      close(unitbin)
-!      open(unitbin,file=filename,status='replace',form='binary') 
-!      open(unitbin,file=filename,status='replace',form='unformatted') 
-!      write(unitbin) x1out(:,:)
-!      write(unitbin) hydout(:,:)
-!      close(unitbin)
-!
-      write(6,*) "output:",nout,time
+    open(unitbin,file=filename,form='formatted',action="write")
+    write(unitbin,"(a2,f6.4)") "# ",time
+    write(unitbin,*) "# x, density, velocity, pressure"
+    do i=is,ie
+         write(unitbin,*) x1c(i), Q(i,IDN), Q(i,IVX), Q(i,IPR)
+    enddo
+    close(unitbin)
 
-      nout=nout+1
-      tout=tout + dtout
+    write(6,*) "output:",nout,time
 
-      return
-      end subroutine Output
+    nout=nout+1
+    tout=tout + dtout
 
-      subroutine makedirs(outdir)
-      implicit none
-      character(len=*), intent(in) :: outdir
-      character(len=256) command
-      write(command, *) 'if [ ! -d ', trim(outdir), ' ]; then mkdir -p ', trim(outdir), '; fi'
-      write(*, *) trim(command)
-      call system(command)
-      end subroutine makedirs
+return
+end subroutine Output
+
+subroutine makedirs(outdir)
+implicit none
+character(len=*), intent(in) :: outdir
+character(len=256) command
+    write(command, *) 'if [ ! -d ', trim(outdir), ' ]; then mkdir -p ', trim(outdir), '; fi'
+    write(*, *) trim(command)
+    call system(command)
+end subroutine makedirs
+
 end program main

@@ -45,67 +45,67 @@
 \setlength{\textheight}{23.0cm}
 \setlength{\footskip}{18pt}
 
-%  Redefinition  \tableofcontents  in  report.cls
-\makeatletter
-\renewcommand\tableofcontents{%
-    \if@twocolumn
-      \@restonecoltrue\onecolumn
-    \else
-      \@restonecolfalse
-    \fi
-    \chapter*{\contentsname
-        \@mkboth{\contentsname}{\contentsname}}%
-    \@starttoc{toc}%
-    \if@restonecol\twocolumn\fi
-    }
-
-%  Redefinition \listoffigures in report.cls
-%\renewcommand\listoffigures{%
+%%  Redefinition  \tableofcontents  in  report.cls
+%\makeatletter
+%\renewcommand\tableofcontents{%
 %    \if@twocolumn
 %      \@restonecoltrue\onecolumn
 %    \else
 %      \@restonecolfalse
 %    \fi
-%    \chapter*{\listfigurename
-%      \@mkboth{\listfigurename}{\listfigurename}}%
-%    \@starttoc{lof}%
+%    \chapter*{\contentsname
+%        \@mkboth{\contentsname}{\contentsname}}%
+%    \@starttoc{toc}%
 %    \if@restonecol\twocolumn\fi
 %    }
-
-% %  Redefinition \listoftables in report.cls
-\renewcommand\listoftables{%
-    \if@twocolumn
-      \@restonecoltrue\onecolumn
-    \else
-      \@restonecolfalse
-    \fi
-    \chapter*{\listtablename
-      \@mkboth{\listtablename}{\listtablename}}%
-    \@starttoc{lot}%
-    \if@restonecol\twocolumn\fi
-    }
-
-%  Redefinition thebibliograph in report.cls
-\renewenvironment{thebibliography}[1]
-     {\chapter*{\bibname
-        \@mkboth{\bibname}{\bibname}}%
-      \list{\@biblabel{\@arabic\c@enumiv}}%
-           {\settowidth\labelwidth{\@biblabel{#1}}%
-            \leftmargin\labelwidth
-            \advance\leftmargin\labelsep
-            \@openbib@code
-            \usecounter{enumiv}%
-            \let\p@enumiv\@empty
-            \renewcommand\theenumiv{\@arabic\c@enumiv}}%
-      \sloppy
-      \clubpenalty4000
-      \@clubpenalty \clubpenalty
-      \widowpenalty4000%
-      \sfcode`\.\@m}
-     {\def\@noitemerr
-       {\@latex@warning{Empty `thebibliography' environment}}%
-      \endlist}
-
+%
+%%  Redefinition \listoffigures in report.cls
+%%\renewcommand\listoffigures{%
+%%    \if@twocolumn
+%%      \@restonecoltrue\onecolumn
+%%    \else
+%%      \@restonecolfalse
+%%    \fi
+%%    \chapter*{\listfigurename
+%%      \@mkboth{\listfigurename}{\listfigurename}}%
+%%    \@starttoc{lof}%
+%%    \if@restonecol\twocolumn\fi
+%%    }
+%
+%% %  Redefinition \listoftables in report.cls
+%\renewcommand\listoftables{%
+%    \if@twocolumn
+%      \@restonecoltrue\onecolumn
+%    \else
+%      \@restonecolfalse
+%    \fi
+%    \chapter*{\listtablename
+%      \@mkboth{\listtablename}{\listtablename}}%
+%    \@starttoc{lot}%
+%    \if@restonecol\twocolumn\fi
+%    }
+%
+%%  Redefinition thebibliograph in report.cls
+%\renewenvironment{thebibliography}[1]
+%     {\chapter*{\bibname
+%        \@mkboth{\bibname}{\bibname}}%
+%      \list{\@biblabel{\@arabic\c@enumiv}}%
+%           {\settowidth\labelwidth{\@biblabel{#1}}%
+%            \leftmargin\labelwidth
+%            \advance\leftmargin\labelsep
+%            \@openbib@code
+%            \usecounter{enumiv}%
+%            \let\p@enumiv\@empty
+%            \renewcommand\theenumiv{\@arabic\c@enumiv}}%
+%      \sloppy
+%      \clubpenalty4000
+%      \@clubpenalty \clubpenalty
+%      \widowpenalty4000%
+%      \sfcode`\.\@m}
+%     {\def\@noitemerr
+%       {\@latex@warning{Empty `thebibliography' environment}}%
+%      \endlist}
+%
 
 %  Input the format.tex file.
 %\input format.tex

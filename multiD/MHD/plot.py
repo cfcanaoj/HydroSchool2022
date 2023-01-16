@@ -11,8 +11,9 @@ plt.ylabel("y axis")
 
 graph_list = [] 
 icount = 0
-for istep in range(1,101):
-    foutname = "output/bin%05d.dat"%(istep)
+#for istep in range(1,101):
+for istep in range(100,101):
+    foutname = "output/bin%05d_uw.dat"%(istep)
     print(foutname)
     with open(foutname, 'r') as data_file:
         line = data_file.readline();
@@ -41,7 +42,7 @@ for istep in range(1,101):
     graph_list.append([im])
     icount+=1
 
-ani = animation.ArtistAnimation(fig, graph_list, interval=200) 
+#ani = animation.ArtistAnimation(fig, graph_list, interval=200) 
 plt.show()
 #plt.show()
 #    data = np.loadtxt(foutname)
