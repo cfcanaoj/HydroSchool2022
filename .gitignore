@@ -1,0 +1,26 @@
+# Configured outputs
+Makefile
+1D/HD/bindata
+1D/HD/snap
+1D/MHD/bindata
+1D/SODshock1Dcpp/EXACTsl
+snap
+xydata
+
+# Compiled object files
+*.o
+*.mod
+*.blg
+*.toc
+*.aux
+*.bbl
+
+# Executables
+a.out
+
+# Mac OS metadata
+.DS_Store
+
+# editor temp files
+*~
+*.swp
