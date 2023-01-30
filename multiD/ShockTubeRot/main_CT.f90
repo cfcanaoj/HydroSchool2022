@@ -20,7 +20,7 @@ integer,parameter::ks=1         ! the index of the leftmost grid
 integer,parameter::ie=nx+mgn     ! the index of the rightmost grid
 integer,parameter::je=ny+mgn     ! the index of the rightmost grid
 integer,parameter::ke=1 ! the index of the rightmost grid
-real(8),parameter::x1min=0.d0,x1max=1.0d0
+real(8),parameter::x1min=0.d0,x1max=2.0d0
 !real(8),parameter::x2min=0.d0,x2max=2.0d0/dble(nx)
 real(8),parameter::x2min=0.d0,x2max=1.0d0*dble(ny)/dble(nx)
 real(8),parameter::x3min=0.0d0,x3max=1.0d0
@@ -1456,7 +1456,7 @@ contains
       write(unitbin,"(a9,f4.2,a7,i3.3,a7,i3.3)") "# time = ",time, "  nx = ",nx, "  ny = ",ny
       do k=ks,ke
       do j=js,je
-      do i=is-1,ie+1
+      do i=is,ie
          divB = ( Bc(i+1,j,k,1) - Bc(i-1,j,k,1) )/(x1b(i+1) - x1b(i-1)) &
               + ( Bc(i,j+1,k,2) - Bc(i,j-1,k,2) )/(x2b(j+1) - x2b(j-1)) 
 
