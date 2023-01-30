@@ -5,7 +5,10 @@ Makefile
 1D/MHD/bindata
 1D/SODshock1Dcpp/EXACTsl
 snap
+snap_alf
 xydata
+epsfile
+output
 
 # Compiled object files
 *.o
@@ -14,6 +17,9 @@ xydata
 *.toc
 *.aux
 *.bbl
+
+# outputfile
+*.dat
 
 # Executables
 a.out
