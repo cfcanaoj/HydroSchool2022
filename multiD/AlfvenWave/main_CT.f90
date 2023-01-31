@@ -7,7 +7,7 @@ data time / 0.0d0 /
 real(8),parameter:: timemax=1.0d0/dsqrt(5.0d0)
 real(8),parameter:: dtout=0.1d0/dsqrt(5.0d0)
 
-integer,parameter::nx=256*2/1/1 ! the number of grids in the simulation box
+integer,parameter::nx=1024/1/1/1/1/1/1 ! the number of grids in the simulation box
 integer,parameter::ny=nx/2 ! the number of grids in the simulation box
 integer,parameter::nz=1          ! the number of grids in the simulation box
 integer,parameter::mgn=2         ! the number of ghost cells
@@ -24,7 +24,7 @@ real(8),parameter::x1min=0.d0,x1max=1.0d0
 real(8),parameter::x2min=0.d0,x2max=1.0d0*dble(ny)/dble(nx)
 real(8),parameter::x3min=0.0d0,x3max=1.0d0
 
-real(8),parameter::Ccfl=0.4d0/1/1
+real(8),parameter::Ccfl=0.4d0/1/1/1/1/1/1
 
 integer, parameter :: IDN = 1
 integer, parameter :: IM1 = 2
@@ -655,6 +655,7 @@ contains
          else
             dv(i) = 0.0d0
          endif
+!         dv(i) = 0.5d0*(dvp(i) + dvm(i))
       enddo
 
       return
@@ -1508,7 +1509,7 @@ contains
       implicit none
       real(8), intent(in) :: x1a(:), x2a(:), x1b(:), x2b(:), Bc(:,:,:,:), Q(:,:,:,:)
       integer::i,j,k
-      real(8) :: error, sina, cosa, k_dot_x, Bperp, kwave
+      real(8) :: error, sina, cosa, k_dot_x, Bperp, kwave, vperp
 
       kwave = 2.0d0*dacos(-1.0d0)*dsqrt(1.0d0 + 2.0d0**2)
       cosa = 1.0d0/dsqrt(5.0d0)
@@ -1520,9 +1521,10 @@ contains
       do i=is,ie
          k_dot_x = kwave*( x1b(i)*cosa + x2b(j)*sina ) 
          Bperp = - sina*Bc(i,j,k,1) + cosa*Bc(i,j,k,2)
+         vperp = - sina*Q(i,j,k,IV1) + cosa*Q(i,j,k,IV2)
 
-         error = error + ( Bperp - 0.1d0*dsin(k_dot_x) )**2
-
+         error = error + ( Bperp - 0.1d0*dsin(k_dot_x) )**2 &
+                       + ( vperp - 0.1d0*dsin(k_dot_x) )**2
       enddo
       enddo
       enddo
