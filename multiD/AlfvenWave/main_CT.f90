@@ -7,7 +7,7 @@ data time / 0.0d0 /
 real(8),parameter:: timemax=1.0d0/dsqrt(5.0d0)
 real(8),parameter:: dtout=0.1d0/dsqrt(5.0d0)
 
-integer,parameter::nx=1024/1/1/1/1/1/1 ! the number of grids in the simulation box
+integer,parameter::nx=1024/2/2/2/1/1/1 ! the number of grids in the simulation box
 integer,parameter::ny=nx/2 ! the number of grids in the simulation box
 integer,parameter::nz=1          ! the number of grids in the simulation box
 integer,parameter::mgn=2         ! the number of ghost cells
@@ -24,7 +24,7 @@ real(8),parameter::x1min=0.d0,x1max=1.0d0
 real(8),parameter::x2min=0.d0,x2max=1.0d0*dble(ny)/dble(nx)
 real(8),parameter::x3min=0.0d0,x3max=1.0d0
 
-real(8),parameter::Ccfl=0.4d0/1/1/1/1/1/1
+real(8),parameter::Ccfl=0.4d0/2/2/2/1/1/1
 
 integer, parameter :: IDN = 1
 integer, parameter :: IM1 = 2
@@ -697,7 +697,7 @@ contains
       ! hydro part
       do k=ks,ke
       do j=js-1,je+1
-      do i=is-2,ie+1
+      do i=is-1,ie+1
          dQp(1:NVAR) = Q(i+1,j,k,1:NVAR) - Q(i  ,j,k,1:NVAR)
          dQm(1:NVAR) = Q(i  ,j,k,1:NVAR) - Q(i-1,j,k,1:NVAR)
 
@@ -714,7 +714,7 @@ contains
       ! B field part
       do k=ks,ke
       do j=js-1,je+1
-      do i=is-2,ie+1
+      do i=is-1,ie+1
          dQp(1:3) = Bc(i+1,j,k,1:3) - Bc(i  ,j,k,1:3)
          dQm(1:3) = Bc(i  ,j,k,1:3) - Bc(i-1,j,k,1:3)
 
@@ -746,7 +746,7 @@ contains
 
       ! numerical flux in the y direction
       do k=ks,ke
-      do j=js-2,je+1
+      do j=js-1,je+1
       do i=is-1,ie+1
          dQp(1:NVAR) = Q(i,j+1,k,1:NVAR) - Q(i,j  ,k,1:NVAR)
          dQm(1:NVAR) = Q(i,j  ,k,1:NVAR) - Q(i,j-1,k,1:NVAR)
@@ -764,7 +764,7 @@ contains
 
       ! B field part
       do k=ks,ke
-      do j=js-2,je+1
+      do j=js-1,je+1
       do i=is-1,ie+1
          dQp(1:3) = Bc(i,j+1,k,1:3) - Bc(i,j  ,k,1:3)
          dQm(1:3) = Bc(i,j  ,k,1:3) - Bc(i,j-1,k,1:3)
