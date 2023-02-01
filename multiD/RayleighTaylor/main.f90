@@ -7,8 +7,8 @@ data time / 0.0d0 /
 real(8),parameter:: timemax=20d0   
 real(8),parameter:: dtout=1.0d0
 
-integer,parameter::nx=150        ! the number of grids in the simulation box
-integer,parameter::ny=50   ! the number of grids in the simulation box
+integer,parameter::nx=50*2        ! the number of grids in the simulation box
+integer,parameter::ny=150*2   ! the number of grids in the simulation box
 integer,parameter::nz=1          ! the number of grids in the simulation box
 integer,parameter::mgn=2         ! the number of ghost cells
 integer,parameter::in=nx+2*mgn+1 ! the total number of grids including ghost cells
@@ -20,14 +20,14 @@ integer,parameter::ks=1         ! the index of the leftmost grid
 integer,parameter::ie=nx+mgn     ! the index of the rightmost grid
 integer,parameter::je=ny+mgn     ! the index of the rightmost grid
 integer,parameter::ke=1     ! the index of the rightmost grid
-real(8),parameter::x1min=-0.75d0,x1max=0.75d0
-real(8),parameter::x2min=-0.25d0,x2max=0.25d0
+real(8),parameter::x1min=-0.25d0,x1max=0.25d0
+real(8),parameter::x2min=-0.75d0,x2max=0.75d0
 real(8),parameter::x3min=0.0d0,x3max=1.0d0
 
 real(8),parameter::Ccfl=0.4d0
 
-real(8),parameter::grav_accx=-0.1d0
-real(8),parameter::grav_accy= 0.0d0
+real(8),parameter::grav_accx=0.0d0
+real(8),parameter::grav_accy=-0.1d0
 real(8) ch
 
 integer, parameter :: IDN = 1
@@ -77,11 +77,12 @@ end module commons
       call GenerateGrid(x1a, x1b, x2a, x2b, x3a, x3b)
       call GenerateProblem(x1b, x2b, x3b, Q)
       call ConsvVariable(Q, U)
-      call BoundaryCondition(x1a,Q)
+      call BoundaryCondition(x1a,x2a,Q)
       call Output( x1a, x1b, x2a, x2b, Q )
 
 
-      open(1,file="vx_evo.dat",action="write")
+
+      open(1,file="vx_evo_B0.5_1.dat",action="write")
 ! main loop
       ntime = 1
       mloop: do !ntime=1,ntimemax
@@ -93,12 +94,12 @@ end module commons
          call NumericalFlux( Q, F, G, H )
          call UpdateConsv( 0.5d0*dt, x1a, x2a, x3a, F, G, H, Q, U, U )
          call PrimVariable( U, Q )
-         call BoundaryCondition(x1a, Q )
+         call BoundaryCondition(x1a, x2a,Q )
 
          call NumericalFlux( Q, F, G, H )
          call UpdateConsv( dt, x1a, x2a, x3a, F, G, H, Q, Uo, U )
          call PrimVariable( U, Q )
-         call BoundaryCondition( x1a,Q )
+         call BoundaryCondition( x1a, x2a, Q )
 
          time=time+dt
          ntime = ntime+1
@@ -156,14 +157,15 @@ contains
       integer::i, j, k
       real(8), intent(in ) :: x1b(:), x2b(:), x3b(:)
       real(8), intent(out) :: Q(:,:,:,:)
-      real(8) :: pi, den
+      real(8) :: pi, den, B0
 
       pi = dacos(-1.0d0)
+      B0 = 0.5d0*sqrt( abs(grav_accy)/(2.0*2.0d0*pi) )
 
       do k=ks,ke
       do j=js,je
       do i=is,ie
-           if( x1b(i) .lt. 0.0d0 ) then
+           if( x2b(j) .lt. 0.0d0 ) then
                den = 1.0d0
            else 
                den = 2.0d0
@@ -172,14 +174,14 @@ contains
            Q(i,j,k,IV1) = 0.0d0
            Q(i,j,k,IV2) = 0.0d0
            Q(i,j,k,IV3) = 0.0d0
-           Q(i,j,k,IB1) = 0.0d0
+           Q(i,j,k,IB1) = B0 
            Q(i,j,k,IB2) = 0.0d0
            Q(i,j,k,IB3) = 0.0d0
-           Q(i,j,k,IPR) = 2.5d0 + grav_accx*den*x1b(i)
+           Q(i,j,k,IPR) = 2.5d0 + grav_accy*den*x2b(j)
 
-           Q(i,j,k,IV1)= 0.01d0/4.0d0 &
-                     & *(-dcos(2.0d0*pi*(x2b(j)-(x2max+x2min)/2.0d0)/(x2max-x2min))) &
-                     & *(1.0+cos(2.0d0*pi*(x1b(i)-(x1max+x1min)/2.0d0)/(x1max-x1min)))
+           Q(i,j,k,IV2)= 0.01d0/4.0d0 &
+                     & *(-dcos(2.0d0*pi*(x1b(i)-(x1max+x1min)/2.0d0)/(x1max-x1min))) &
+                     & *(1.0+cos(2.0d0*pi*(x2b(j)-(x2max+x2min)/2.0d0)/(x2max-x2min)))
 !                     & *dexp( - (x1b(i) - (x1max+x1min)/2.0d0)**2/(0.1**2) )
 !                     & *(+cos(2.0d0*pi*(x1b(i)-(x1max+x1min)/2.0d0)/(x1max-x1min)))
       enddo
@@ -265,25 +267,25 @@ contains
       return
       end subroutine GenerateProblem
 
-      subroutine BoundaryCondition(x1a,Q)
+      subroutine BoundaryCondition(x1a, x2a, Q)
       use commons
       implicit none
-      real(8), intent(inout) :: x1a(:),Q(:,:,:,:)
+      real(8), intent(inout) :: x1a(:), x2a(:), Q(:,:,:,:)
       integer::i,j,k,ish
 
+
       do k=ks,ke
       do j=1,jn-1
       do i=1,mgn
-          Q(is-i,j,k,IDN)  = Q(is-1+i,j,k,IDN)
-          Q(is-i,j,k,IV1)  = -Q(is-1+i,j,k,IV1)
-          Q(is-i,j,k,IV2)  = Q(is-1+i,j,k,IV2)
-          Q(is-i,j,k,IV3)  = Q(is-1+i,j,k,IV3)
-          Q(is-i,j,k,IPR)  = Q(is-1+i,j,k,IPR) &
-                           - Q(is-1+i,j,k,IDN)*grav_accx*(2*i-1)*(x1a(i+1)-x1a(i))
-          Q(is-i,j,k,IB1)  = Q(is-1+i,j,k,IB1)
-          Q(is-i,j,k,IB2)  = Q(is-1+i,j,k,IB2)
-          Q(is-i,j,k,IB3)  = Q(is-1+i,j,k,IB3)
-          Q(is-i,j,k,IPS)  = Q(is-1+i,j,k,IPS)
+          Q(is-i,j,k,IDN)  = Q(ie-i+1,j,k,IDN)
+          Q(is-i,j,k,IV1)  = Q(ie-i+1,j,k,IV1)
+          Q(is-i,j,k,IV2)  = Q(ie-i+1,j,k,IV2)
+          Q(is-i,j,k,IV3)  = Q(ie-i+1,j,k,IV3)
+          Q(is-i,j,k,IPR)  = Q(ie-i+1,j,k,IPR)
+          Q(is-i,j,k,IB1)  = Q(ie-i+1,j,k,IB1)
+          Q(is-i,j,k,IB2)  = Q(ie-i+1,j,k,IB2)
+          Q(is-i,j,k,IB3)  = Q(ie-i+1,j,k,IB3)
+          Q(is-i,j,k,IPS)  = Q(ie-i+1,j,k,IPS)
       enddo
       enddo
       enddo
@@ -291,16 +293,15 @@ contains
       do k=ks,ke
       do j=1,jn-1
       do i=1,mgn
-          Q(ie+i,j,k,IDN) = Q(ie-i+1,j,k,IDN)
-          Q(ie+i,j,k,IV1) = -Q(ie-i+1,j,k,IV1)
-          Q(ie+i,j,k,IV2) = Q(ie-i+1,j,k,IV2)
-          Q(ie+i,j,k,IV3) = Q(ie-i+1,j,k,IV3)
-          Q(ie+i,j,k,IPR) = Q(ie-i+1,j,k,IPR) & 
-                          + Q(ie-i+1,j,k,IDN)*grav_accx*(2*i-1)*(x1a(i+1)-x1a(i))
-          Q(ie+i,j,k,IB1) = Q(ie-i+1,j,k,IB1)
-          Q(ie+i,j,k,IB2) = Q(ie-i+1,j,k,IB2)
-          Q(ie+i,j,k,IB3) = Q(ie-i+1,j,k,IB3)
-          Q(ie+i,j,k,IPS) = Q(ie-i+1,j,k,IPS)
+          Q(ie+i,j,k,IDN)  = Q(is+i-1,j,k,IDN)
+          Q(ie+i,j,k,IV1)  = Q(is+i-1,j,k,IV1)
+          Q(ie+i,j,k,IV2)  = Q(is+i-1,j,k,IV2)
+          Q(ie+i,j,k,IV3)  = Q(is+i-1,j,k,IV3)
+          Q(ie+i,j,k,IPR)  = Q(is+i-1,j,k,IPR)
+          Q(ie+i,j,k,IB1)  = Q(is+i-1,j,k,IB1)
+          Q(ie+i,j,k,IB2)  = Q(is+i-1,j,k,IB2)
+          Q(ie+i,j,k,IB3)  = Q(is+i-1,j,k,IB3)
+          Q(ie+i,j,k,IPS)  = Q(is+i-1,j,k,IPS)
       enddo
       enddo
       enddo
@@ -308,15 +309,16 @@ contains
       do k=ks,ke
       do j=1,mgn
       do i=1,in-1
-          Q(i,js-j,k,IDN)  = Q(i,je-j+1,k,IDN)
-          Q(i,js-j,k,IV1)  = Q(i,je-j+1,k,IV1)
-          Q(i,js-j,k,IV2)  = Q(i,je-j+1,k,IV2)
-          Q(i,js-j,k,IV3)  = Q(i,je-j+1,k,IV3)
-          Q(i,js-j,k,IPR)  = Q(i,je-j+1,k,IPR)
-          Q(i,js-j,k,IB1)  = Q(i,je-j+1,k,IB1)
-          Q(i,js-j,k,IB2)  = Q(i,je-j+1,k,IB2)
-          Q(i,js-j,k,IB3)  = Q(i,je-j+1,k,IB3)
-          Q(i,js-j,k,IPS)  = Q(i,je-j+1,k,IPS)
+          Q(i,js-j,k,IDN)  = Q(i,js-1+j,k,IDN)
+          Q(i,js-j,k,IV1)  = Q(i,js-1+j,k,IV1)
+          Q(i,js-j,k,IV2)  = -Q(i,js-1+j,k,IV2)
+          Q(i,js-j,k,IV3)  = Q(i,js-1+j,k,IV3)
+          Q(i,js-j,k,IPR)  = Q(i,js-1+j,k,IPR) &
+                           - Q(i,js-1+j,k,IDN)*grav_accy*(2*j-1)*(x2a(j+1)-x2a(j))
+          Q(i,js-j,k,IB1)  = Q(i,js-1+j,k,IB1)
+          Q(i,js-j,k,IB2)  = Q(i,js-1+j,k,IB2)
+          Q(i,js-j,k,IB3)  = Q(i,js-1+j,k,IB3)
+          Q(i,js-j,k,IPS)  = Q(i,js-1+j,k,IPS)
       enddo
       enddo
       enddo
@@ -324,20 +326,19 @@ contains
       do k=ks,ke
       do j=1,mgn
       do i=1,in-1
-          Q(i,je+j,k,IDN)  = Q(i,js+j-1,k,IDN)
-          Q(i,je+j,k,IV1)  = Q(i,js+j-1,k,IV1)
-          Q(i,je+j,k,IV2)  = Q(i,js+j-1,k,IV2)
-          Q(i,je+j,k,IV3)  = Q(i,js+j-1,k,IV3)
-          Q(i,je+j,k,IPR)  = Q(i,js+j-1,k,IPR)
-          Q(i,je+j,k,IB1)  = Q(i,js+j-1,k,IB1)
-          Q(i,je+j,k,IB2)  = Q(i,js+j-1,k,IB2)
-          Q(i,je+j,k,IB3)  = Q(i,js+j-1,k,IB3)
-          Q(i,je+j,k,IPS)  = Q(i,js+j-1,k,IPS)
+          Q(i,je+j,k,IDN) = Q(i,je-j+1,k,IDN)
+          Q(i,je+j,k,IV1) = Q(i,je-j+1,k,IV1)
+          Q(i,je+j,k,IV2) = -Q(i,je-j+1,k,IV2)
+          Q(i,je+j,k,IV3) = Q(i,je-j+1,k,IV3)
+          Q(i,je+j,k,IPR) = Q(i,je-j+1,k,IPR) & 
+                          + Q(i,je-j+1,k,IDN)*grav_accy*(2*j-1)*(x2a(j+1)-x2a(j))
+          Q(i,je+j,k,IB1) = Q(i,je-j+1,k,IB1)
+          Q(i,je+j,k,IB2) = Q(i,je-j+1,k,IB2)
+          Q(i,je+j,k,IB3) = Q(i,je-j+1,k,IB3)
+          Q(i,je+j,k,IPS) = Q(i,je-j+1,k,IPS)
       enddo
       enddo
       enddo
-
-
 
       return
       end subroutine BoundaryCondition
@@ -1005,9 +1006,10 @@ contains
          U(i,j,k,IEN) = U(i,j,k,IEN) + src*Q(i,j,k,IV1)
 
          src = dt1*Q(i,j,k,IDN)*grav_accy
-         U(i,j,k,IM1) = U(i,j,k,IM1) + src
+         U(i,j,k,IM2) = U(i,j,k,IM2) + src
          U(i,j,k,IEN) = U(i,j,k,IEN) + src*Q(i,j,k,IV2)
 
+!         U(i,j,k,IPS) = U(i,j,k,IPS)*dexp(-0.1*Ccfl*dt1/dt)
          U(i,j,k,IPS) = U(i,j,k,IPS)*dexp(-0.1*Ccfl*dt1/dt)
 !         U(i,j,k,IPS) = U(i,j,k,IPS) - 1.00*Ccfl*dt1/dt*Q(i,j,k,IPS)
       enddo
@@ -1023,7 +1025,7 @@ contains
       implicit none
       real(8), intent(in) :: x1a(:), x1b(:), x2a(:), x2b(:), Q(:,:,:,:)
       integer::i,j,k
-      character(20),parameter::dirname="snap"
+      character(20),parameter::dirname="snap_B0.5"
       character(20),parameter::base="rt"
       character(20),parameter::suffix=".dat"
       character(100)::filename
@@ -1149,11 +1151,11 @@ contains
       do k=ks,ke
       do j=js,je
       do i=is,ie
-           dvx = dvx + Q(i,j,k,IV2)**2
+           dvx = dvx + Q(i,j,k,IV1)**2
       enddo
       enddo
       enddo
-      dvx = sqrt(dvx/dble(nx*ny))
+      Analysis = sqrt(dvx/dble(nx*ny))
       
       return
       end function

@@ -17,12 +17,12 @@ grav = 0.1
 kwave = 2*np.pi/0.5
 
 Gam = np.sqrt( grav*kwave*(rho2 - rho1)/(rho2 + rho1) )
-print(Gam)
+
 
 data = np.loadtxt("vx_evo.dat")
-
 plt.plot(data[:,0], data[:,1], label="simulation")
 plt.plot(data[:,0], 3e-4*np.exp( Gam*data[:,0] ), label="linear analysis")
+
 
 plt.legend()
 

@@ -9,21 +9,21 @@ plt.ylim(0, 1)
 plt.xlabel("x axis") 
 plt.ylabel("y axis") 
 
-xmin = -0.75
-xmax =  0.75
-ymin = -0.25
-ymax =  0.25
+xmin = -0.25
+xmax =  0.25
+ymin = -0.75
+ymax =  0.75
 
-dirname = "snap"
+dirname = "snap_B1.0"
 base = "rt"
 suffix = ".dat"
 fname_anime = "animation.mp4"
 
-step_s = 10
-step_e = 11
+step_s = 15
+step_e = 16
 
 graph_list = [] 
-for istep in range(step_s,step_e+1):
+for istep in range(step_s,step_e):
     foutname = dirname + "/" + base + "%05d"%(istep) + suffix
     print("making plot ",foutname)
     with open(foutname, 'r') as data_file:
@@ -54,10 +54,10 @@ for istep in range(step_s,step_e+1):
     im=plt.imshow(den[:,:],extent=(xmin,xmax,ymin,ymax),origin="lower",vmin=1,vmax=2)
 
     if istep == step_s: 
-        plt.colorbar(im,orientation="horizontal")
+        plt.colorbar(im,orientation="vertical")
     graph_list.append([pg00,im])               
 
-    plt.savefig("epsfile/snap%05d.pdf"%(istep),bbox_inches="tight", pat_inches=1.0,dpi=1000)
+    plt.savefig(dirname + "/pdffile/rt%05d.pdf"%(istep),bbox_inches="tight", pat_inches=1.0,dpi=1000)
 
 #ani = animation.ArtistAnimation(fig, graph_list, interval=200) 
 #print("making animation file", fname_anime)
