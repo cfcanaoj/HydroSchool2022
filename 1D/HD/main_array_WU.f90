@@ -31,58 +31,58 @@ program main
 use commons
 implicit none
 
-real(8),dimension(nxtot)::x1b,x1c
+real(8),dimension(nxtot)::xf,xv
 real(8),dimension(nxtot,NVAR) :: U ! conservative variables
 real(8),dimension(nxtot,NVAR) :: Q ! primitive variables
 real(8),dimension(nxtot,NVAR) :: F ! numerical flux
 
       write(6,*) "setup grids and initial condition"
-      call GenerateGrid(x1b, x1c)
-      call GenerateProblem(x1c, Q)
+      call GenerateGrid(xf, xv)
+      call GenerateProblem(xv, Q)
       call ConsvVariable(Q, U)
-      call Output( x1b, x1c, Q )
+      call Output( xf, xv, Q )
 
 ! main loop
       do !ntime=1,ntimemax
-         call TimestepControl(x1b, Q)
+         call TimestepControl(xf, Q)
          if( time + dt > timemax ) dt = timemax - time
          call BoundaryCondition(Q)
          call NumericalFlux(Q, F)
          call UpdateConsv( F, U )
          call PrimVariable( U, Q )
          time=time+dt
-         call Output( x1b, x1c, Q)
+         call Output( xf, xv, Q)
 
          if(time >= timemax) exit 
       enddo 
-      call Output( x1b, x1c, Q)
+      call Output( xf, xv, Q)
 
       write(6,*) "program has been finished"
 contains
 
-subroutine GenerateGrid(x1b, x1c)
+subroutine GenerateGrid(xf, xv)
 use commons
 implicit none
-real(8), intent(out) :: x1b(:), x1c(:)
+real(8), intent(out) :: xf(:), xv(:)
 real(8) :: dx,dy
 integer::i
 
     dx=(x1max-x1min)/nx
     do i=1,nxtot
-         x1b(i) = dx*(i-(mgn+1))+x1min
+         xf(i) = dx*(i-(mgn+1))+x1min
     enddo
     do i=1,nxtot-1
-         x1c(i) = 0.5d0*(x1b(i+1)+x1b(i))
+         xv(i) = 0.5d0*(xf(i+1)+xf(i))
     enddo
 
 return
 end subroutine GenerateGrid
 
-subroutine GenerateProblem(x1c, Q)
+subroutine GenerateProblem(xv, Q)
 use commons
 implicit none
 integer::i
-real(8), intent(in ) :: x1c(:)
+real(8), intent(in ) :: xv(:)
 real(8), intent(out) :: Q(:,:)
 real(8) :: rho1,rho2,Lsm,u1,u2
 real(8)::pi
@@ -90,7 +90,7 @@ real(8)::pi
       pi=acos(-1.0d0)
 
       do i=is,ie
-         if( x1c(i) < 0.0d0 ) then 
+         if( xv(i) < 0.0d0 ) then 
              Q(i,IDN) = 1.0d0
              Q(i,IVX) = 0.0d0
              Q(i,IPR) = 1.0d0
@@ -157,10 +157,10 @@ integer::i
 return
 end subroutine PrimVariable
 
-subroutine TimestepControl(x1b, Q)
+subroutine TimestepControl(xf, Q)
 use commons
 implicit none
-real(8), intent(in) :: x1b(:), Q(:,:)
+real(8), intent(in) :: xf(:), Q(:,:)
 real(8)::dtl1
 real(8)::dtlocal
 real(8)::dtmin
@@ -169,7 +169,7 @@ integer::i
     dtmin=1.0d90
 
     do i=is,ie
-        dtlocal =(x1b(i+1)-x1b(i))/(abs(Q(i,IVX)) + dsqrt(gam*Q(i,IPR)/Q(i,IDN)))
+        dtlocal =(xf(i+1)-xf(i))/(abs(Q(i,IVX)) + dsqrt(gam*Q(i,IPR)/Q(i,IDN)))
          if(dtlocal .lt. dtmin) dtmin = dtlocal
     enddo
 
@@ -238,7 +238,7 @@ real(8) :: ddmon, dvmon, dpmon
 !         call HLLE(leftst,rigtst,nflux)
     do i=is,ie+1
 !        call HLL(Ql(i,:),Qr(i,:),flx)
-        call Lax((x1b(i) - x1b(i-1))/dt,Ql(i,:),Qr(i,:),flx)
+        call Lax((xf(i) - xf(i-1))/dt,Ql(i,:),Qr(i,:),flx)
         F(i,:)  = flx(:)
     enddo
 
@@ -350,17 +350,17 @@ integer::i,n
 
     do n=1,NVAR
         do i=is,ie
-            U(i,n) = U(i,n) + dt*(- F(i+1,n) + F(i,n))/(x1b(i+1)-x1b(i)) 
+            U(i,n) = U(i,n) + dt*(- F(i+1,n) + F(i,n))/(xf(i+1)-xf(i)) 
         enddo
     enddo
 
 return
 end subroutine UpdateConsv
 
-subroutine Output( x1b, x1c, Q )
+subroutine Output( xf, xv, Q )
 use commons
 implicit none
-real(8), intent(in) :: x1b(:), x1c(:), Q(:,:)
+real(8), intent(in) :: xf(:), xv(:), Q(:,:)
 integer::i
 character(20),parameter::dirname="snap/"
 character(40)::filename
@@ -390,7 +390,7 @@ data is_inited /.false./
     write(unitbin,"(a2,f6.4)") "# ",time
     write(unitbin,*) "# x, density, velocity, pressure"
     do i=is,ie
-         write(unitbin,*) x1c(i), Q(i,IDN), Q(i,IVX), Q(i,IPR)
+         write(unitbin,*) xv(i), Q(i,IDN), Q(i,IVX), Q(i,IPR)
     enddo
     close(unitbin)
 
