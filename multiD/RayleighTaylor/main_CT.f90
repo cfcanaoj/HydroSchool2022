@@ -44,24 +44,17 @@ integer, parameter :: IV2 = 3
 integer, parameter :: IV3 = 4
 integer, parameter :: IEN = 5
 
+real(8),parameter::gam=5.0d0/3.0d0 !! adiabatic index
+
 end module commons
      
-      module eosmod
-      implicit none
-! adiabatic
-      real(8),parameter::gam=5.0d0/3.0d0 !! adiabatic index
-!      real(8),parameter::gam=1.4d0 !! adiabatic index
-! isothermal
-!      real(8)::csiso  !! isothemal sound speed
-      end module eosmod
+program main
+use commons
+implicit none
 
-      program main
-      use commons
-      implicit none
-
-      real(8),dimension(in)::x1a,x1b
-      real(8),dimension(jn)::x2a,x2b
-      real(8),dimension(kn)::x3a,x3b
+      real(8),dimension(in)::xf,xv
+      real(8),dimension(jn)::yf,yv
+      real(8),dimension(kn)::zf,zv
       real(8),dimension(in,jn,kn,NVAR) :: Uo
       real(8),dimension(in,jn,kn,NVAR) :: U
       real(8),dimension(in,jn,kn,NVAR) :: Q
@@ -72,99 +65,96 @@ end module commons
       real(8),dimension(in,jn,kn,NVAR) :: G
       real(8),dimension(in,jn,kn,NVAR) :: H
       real(8),dimension(in,jn,kn,3) :: E ! electric field
-      integer :: i, j,k
+      real(8) :: dt
+      integer :: i,j,k
 
 !      write(6,*) "setup grids and initial condition"
-      call GenerateGrid(x1a, x1b, x2a, x2b, x3a, x3b)
-      call GenerateProblem(x1b, x2b, x3b, Q, Bs, Bc)
+      call GenerateGrid(xf, xv, yf, yv, zf, zv)
+      call GenerateProblem(xv, yv, zv, Q, Bs, Bc)
       call ConsvVariable(Q, Bc, U)
-      call BoundaryCondition( x1a, x2a, Q, Bs, Bc )
-      call Output( x1a, x1b, x2a, x2b, Q, Bc, Bs )
+      call BoundaryCondition( xf, yf, Q, Bs, Bc )
+      call Output( xf, xv, yf, yv, Q, Bc, Bs )
 
 
-      print*, nx, Analysis( x1b, x2b, Q, Bc )
+      print*, nx, Analysis( xv, yv, Q, Bc )
 
       open(1,file="vx_evo_B0.5_ct1.dat",action="write")
 ! main loop
       mloop: do !ntime=1,ntimemax
-         call TimestepControl(x1a, x2a, x3a, Q, Bc)
+         call TimestepControl(xf, yf, zf, Q, Bc)
          if( time + dt > timemax ) dt = timemax - time
 
          Uo(:,:,:,:) = U(:,:,:,:)
          Bso(:,:,:,:) = Bs(:,:,:,:)
 
-
-         call NumericalFlux( x1a, x2a, x3a, Q, F, G, H, E )
-         call UpdateConsv( 0.5d0*dt, x1a, x2a, x3a, F, G, H, E, Q, U, Bs, U, Bs )
+         call NumericalFlux( xf, yf, zf, 0.5d0*dt, Q, F, G, H, E )
+         call UpdateConsv( 0.5d0*dt, xf, yf, zf, F, G, H, E, Q, U, Bs, U, Bs )
          call PrimVariable( U, Bs, Q, Bc )
-         call BoundaryCondition( x1a, x2a, Q, Bs, Bc )
+         call BoundaryCondition( xf, yf, Q, Bs, Bc )
 
-         call NumericalFlux( x1a, x2a, x3a, Q, F, G, H, E )
-         call UpdateConsv( dt, x1a, x2a, x3a, F, G, H, E, Q, Uo, Bso, U, Bs )
+         call NumericalFlux( xf, yf, zf, dt, Q, F, G, H, E )
+         call UpdateConsv( dt, xf, yf, zf, F, G, H, E, Q, Uo, Bso, U, Bs )
          call PrimVariable( U, Bs, Q, Bc )
-         call BoundaryCondition( x1a, x2a, Q, Bs, Bc )
+         call BoundaryCondition( xf, yf, Q, Bs, Bc )
 
          time=time+dt
-         call Output( x1a, x1b, x2a, x2b, Q, Bc, Bs)
+         call Output( xf, xv, yf, yv, Q, Bc, Bs)
 
          if( mod(ntime,10) .eq. 0 ) then
-             write(1,*) time, Analysis(x1b,x2b,Q,Bc)
+             write(1,*) time, Analysis(xv,yv,Q,Bc)
              call flush(1)
          endif
 
-!         write(1,*) time, errorBpara(Q), divergenceB(x1a,x2a,Bc)
+!         write(1,*) time, errorBpara(Q), divergenceB(xf,yf,Bc)
 
          print*,time
 
          if(time >= timemax) exit mloop
       enddo mloop
       close(1)
-      call Output( x1a, x1b, x2a, x2b, Q, Bc, Bs)
+      call Output( xf, xv, yf, yv, Q, Bc, Bs)
 
 
 !      write(6,*) "program has been finished"
 contains
 
-      subroutine GenerateGrid(x1a, x1b, x2a, x2b, x3a, x3b)
+      subroutine GenerateGrid(xf, xv, yf, yv, zf, zv)
       use commons
-      use eosmod
       implicit none
-      real(8), intent(out) :: x1a(:), x1b(:)
-      real(8), intent(out) :: x2a(:), x2b(:)
-      real(8), intent(out) :: x3a(:), x3b(:)
+      real(8), intent(out) :: xf(:), xv(:)
+      real(8), intent(out) :: yf(:), yv(:)
+      real(8), intent(out) :: zf(:), zv(:)
       real(8) :: dx,dy
       integer::i,j
 
 
       dx=(x1max-x1min)/dble(nx)
       do i=1,in
-         x1a(i) = dx*(i-(mgn+1))+x1min
+         xf(i) = dx*(i-(mgn+1))+x1min
       enddo
       do i=1,in-1
-         x1b(i) = 0.5d0*(x1a(i+1)+x1a(i))
+         xv(i) = 0.5d0*(xf(i+1)+xf(i))
       enddo
 
       dy=(x2max-x2min)/dble(ny)
       do j=1,jn
-         x2a(j) = dx*(j-(mgn+1))+x2min
+         yf(j) = dx*(j-(mgn+1))+x2min
       enddo
       do j=1,jn-1
-         x2b(j) = 0.5d0*(x2a(j+1)+x2a(j))
+         yv(j) = 0.5d0*(yf(j+1)+yf(j))
       enddo
 
       return
       end subroutine GenerateGrid
 
-      subroutine GenerateProblem(x1b, x2b, x3b, Q, Bs, Bc )
+      subroutine GenerateProblem(xv, yv, zv, Q, Bs, Bc )
       use commons
-      use eosmod
       implicit none
       integer::i, j, k
-      real(8), intent(in ) :: x1b(:), x2b(:), x3b(:)
+      real(8), intent(in ) :: xv(:), yv(:), zv(:)
       real(8), intent(out) :: Q(:,:,:,:)
       real(8), intent(out) :: Bs(:,:,:,:)
       real(8), intent(out) :: Bc(:,:,:,:)
-      real(8) :: Az(in,jn,kn), k_dot_x
       real(8) :: pi, den, B0
 
       pi=acos(-1.0d0)
@@ -173,7 +163,7 @@ contains
       do k=ks,ke
       do j=js,je
       do i=is,ie
-           if( x2b(j) .lt. 0.0d0 ) then
+           if( yv(j) .lt. 0.0d0 ) then
                den = 1.0d0
            else 
                den = 2.0d0
@@ -182,11 +172,11 @@ contains
            Q(i,j,k,IV1) = 0.0d0
            Q(i,j,k,IV2) = 0.0d0
            Q(i,j,k,IV3) = 0.0d0
-           Q(i,j,k,IPR) = 2.5d0 + grav_accy*den*x2b(j)
+           Q(i,j,k,IPR) = 2.5d0 + grav_accy*den*yv(j)
 
            Q(i,j,k,IV2)= 0.01d0/4.0d0 &
-                     & *(-dcos(2.0d0*pi*(x1b(i)-(x1max+x1min)/2.0d0)/(x1max-x1min))) &
-                     & *(1.0+cos(2.0d0*pi*(x2b(j)-(x2max+x2min)/2.0d0)/(x2max-x2min)))
+                     & *(-dcos(2.0d0*pi*(xv(i)-(x1max+x1min)/2.0d0)/(x1max-x1min))) &
+                     & *(1.0+cos(2.0d0*pi*(yv(j)-(x2max+x2min)/2.0d0)/(x2max-x2min)))
       enddo
       enddo
       enddo
@@ -221,7 +211,7 @@ contains
 !      do j=js,je
 !      do i=is,ie
 !
-!         if( x2b(j) < 0.0d0 ) then 
+!         if( yv(j) < 0.0d0 ) then 
 !             Q(i,j,k,IDN) = 1.08d0
 !             Q(i,j,k,IV1) = 0.5d0
 !             Q(i,j,k,IV2) = 1.2d0 
@@ -244,7 +234,7 @@ contains
 !             B(i,j,k,3) = 4.0d0/dsqrt(4.0d0*3.141592653589793)
 !         endif
 !
-!!         if( x1b(i) < 0.0d0 ) then 
+!!         if( xv(i) < 0.0d0 ) then 
 !!             Q(i,j,k,IDN) = 1.08d0
 !!             Q(i,j,k,IV1) = 1.2d0
 !!             Q(i,j,k,IV2) = 0.01d0
@@ -268,22 +258,22 @@ contains
 !!         endif
 !!
 !
-!!         if      ( x2b(j) .gt. 0.25d0 )then
-!!             Q(i,j,k,IV1) =    u1 - (  u1-  u2)/2.0d0*exp(-( x2b(j)-0.25d0)/Lsm)
-!!             Q(i,j,k,IDN) =  rho1 - (rho1-rho2)/2.0d0*exp(-( x2b(j)-0.25d0)/Lsm)
-!!         else if (x2b(j) .gt.  0.0d0 )then
-!!             Q(i,j,k,IV1) =    u2 + (  u1-  u2)/2.0d0*exp(-( 0.25d0-x2b(j))/Lsm)
-!!             Q(i,j,k,IDN) =  rho2 + (rho1-rho2)/2.0d0*exp(-( 0.25d0-x2b(j))/Lsm)
-!!         else if (x2b(j) .gt. -0.25d0)then
-!!             Q(i,j,k,IV1) =    u2 + (  u1-  u2)/2.0d0*exp(-( x2b(j)+0.25d0)/Lsm)
-!!             Q(i,j,k,IDN) =  rho2 + (rho1-rho2)/2.0d0*exp(-( x2b(j)+0.25d0)/Lsm)
+!!         if      ( yv(j) .gt. 0.25d0 )then
+!!             Q(i,j,k,IV1) =    u1 - (  u1-  u2)/2.0d0*exp(-( yv(j)-0.25d0)/Lsm)
+!!             Q(i,j,k,IDN) =  rho1 - (rho1-rho2)/2.0d0*exp(-( yv(j)-0.25d0)/Lsm)
+!!         else if (yv(j) .gt.  0.0d0 )then
+!!             Q(i,j,k,IV1) =    u2 + (  u1-  u2)/2.0d0*exp(-( 0.25d0-yv(j))/Lsm)
+!!             Q(i,j,k,IDN) =  rho2 + (rho1-rho2)/2.0d0*exp(-( 0.25d0-yv(j))/Lsm)
+!!         else if (yv(j) .gt. -0.25d0)then
+!!             Q(i,j,k,IV1) =    u2 + (  u1-  u2)/2.0d0*exp(-( yv(j)+0.25d0)/Lsm)
+!!             Q(i,j,k,IDN) =  rho2 + (rho1-rho2)/2.0d0*exp(-( yv(j)+0.25d0)/Lsm)
 !!          else
-!!             Q(i,j,k,IV1) =    u1 - (  u1-  u2)/2.0d0*exp(-(-0.25d0-x2b(j))/Lsm)
-!!             Q(i,j,k,IDN) =  rho1 - (rho1-rho2)/2.0d0*exp(-(-0.25d0-x2b(j))/Lsm)
+!!             Q(i,j,k,IV1) =    u1 - (  u1-  u2)/2.0d0*exp(-(-0.25d0-yv(j))/Lsm)
+!!             Q(i,j,k,IDN) =  rho1 - (rho1-rho2)/2.0d0*exp(-(-0.25d0-yv(j))/Lsm)
 !!         endif
 !!
 !!          Q(i,j,k,IPR) = 2.5d0
-!!          Q(i,j,k,IV2) = 0.01d0*sin(4.0d0*pi*x1b(i))
+!!          Q(i,j,k,IV2) = 0.01d0*sin(4.0d0*pi*xv(i))
 !!          Q(i,j,k,IV3) = 0.0d0
 !      enddo
 !      enddo
@@ -296,10 +286,10 @@ contains
       return
       end subroutine GenerateProblem
 
-      subroutine BoundaryCondition( x1a, x2a, Q, Bs, Bc )
+      subroutine BoundaryCondition( xf, yf, Q, Bs, Bc )
       use commons
       implicit none
-      real(8), intent(in) :: x1a(:), x2a(:)
+      real(8), intent(in) :: xf(:), yf(:)
       real(8), intent(inout) :: Q(:,:,:,:)
       real(8), intent(inout) :: Bs(:,:,:,:)
       real(8), intent(inout) :: Bc(:,:,:,:)
@@ -389,7 +379,7 @@ contains
           Q(i,js-j,k,IV2)  = -Q(i,js-1+j,k,IV2)
           Q(i,js-j,k,IV3)  = Q(i,js-1+j,k,IV3)
           Q(i,js-j,k,IPR)  = Q(i,js-1+j,k,IPR) &
-                           - Q(i,js-1+j,k,IDN)*grav_accy*(2.0d0*dble(j)-1.0d0)*(x2a(j+1)-x2a(j))
+                           - Q(i,js-1+j,k,IDN)*grav_accy*(2.0d0*dble(j)-1.0d0)*(yf(j+1)-yf(j))
       enddo
       enddo
       enddo
@@ -429,7 +419,7 @@ contains
           Q(i,je+j,k,IV2)  = -Q(i,je-j+1,k,IV2)
           Q(i,je+j,k,IV3)  = Q(i,je-j+1,k,IV3)
           Q(i,je+j,k,IPR)  = Q(i,je-j+1,k,IPR) &
-                           + Q(i,je-j+1,k,IDN)*grav_accy*(2.0d0*dble(j)-1.0d0)*(x2a(j+1)-x2a(j))
+                           + Q(i,je-j+1,k,IDN)*grav_accy*(2.0d0*dble(j)-1.0d0)*(yf(j+1)-yf(j))
       enddo
       enddo
       enddo
@@ -503,7 +493,7 @@ contains
 !      do k=ks,ke
 !      do j=js-mgn,je+mgn+1
 !      do i=is-mgn,ie+mgn
-!          print*,x1b(i),x2a(j),Bs(i,j,k,2)
+!          print*,xv(i),yf(j),Bs(i,j,k,2)
 !      enddo
 !      enddo
 !      enddo
@@ -514,7 +504,6 @@ contains
 !
       subroutine ConsvVariable(Q, Bc, U)
       use commons
-      use eosmod
       implicit none
       real(8), intent(in) :: Q(:,:,:,:)
       real(8), intent(in) :: Bc(:,:,:,:)
@@ -540,7 +529,6 @@ contains
 
       subroutine PrimVariable( U, Bs, Q, Bc )
       use commons
-      use eosmod
       implicit none
       real(8), intent(in) :: U(:,:,:,:),Bs(:,:,:,:)
       real(8), intent(out) :: Q(:,:,:,:),Bc(:,:,:,:)
@@ -577,7 +565,6 @@ contains
 
       subroutine CellCenterMagneticField( Bs, Bc )
       use commons
-      use eosmod
       implicit none
       real(8), intent(in) :: Bs(:,:,:,:)
       real(8), intent(out) :: Bc(:,:,:,:)
@@ -597,11 +584,11 @@ contains
       return
       end subroutine CellCenterMagneticField
 
-      subroutine TimestepControl(x1a, x2a, x3a, Q, Bc)
+      subroutine TimestepControl(xf, yf, zf, Q, Bc, dt1)
       use commons
-      use eosmod
       implicit none
-      real(8), intent(in) :: x1a(:), x2a(:), x3a(:), Q(:,:,:,:), Bc(:,:,:,:)
+      real(8), intent(in) :: xf(:), yf(:), zf(:), Q(:,:,:,:), Bc(:,:,:,:)
+      real(8), intent(out) :: dt1
       real(8)::dtl1
       real(8)::dtl2
       real(8)::dtl3
@@ -615,17 +602,16 @@ contains
       do j=js,je
       do i=is,ie
          cf = dsqrt( (gam*Q(i,j,k,IPR) + Bc(i,j,k,1)**2 + Bc(i,j,k,2)**2 + Bc(i,j,k,3)**2)/Q(i,j,k,IDN))
-         dtl1 =(x1a(i+1)-x1a(i))/(abs(Q(i,j,k,IV1)) + cf)
-         dtl2 =(x2a(j+1)-x2a(j))/(abs(Q(i,j,k,IV2)) + cf)
-!         dtl3 =(x3a(j+1)-x3a(j))/(abs(Q(i,j,k,IV3)) + cf)
+         dtl1 =(xf(i+1)-xf(i))/(abs(Q(i,j,k,IV1)) + cf)
+         dtl2 =(yf(j+1)-yf(j))/(abs(Q(i,j,k,IV2)) + cf)
+!         dtl3 =(zf(j+1)-zf(j))/(abs(Q(i,j,k,IV3)) + cf)
          dtlocal = min(dtl1,dtl2)
          if(dtlocal .lt. dtmin) dtmin = dtlocal
       enddo
       enddo
       enddo
 
-      dt = Ccfl* dtmin
-!      write(6,*)"dt",dt
+      dt1 = Ccfl* dtmin
       return
       end subroutine TimestepControl
 
@@ -668,11 +654,12 @@ contains
 !
 !     Output: flux : the numerical flux estimated at the cell boundary
 !---------------------------------------------------------------------
-      subroutine NumericalFlux( x1a, x2a, x3a, Q, F, G, H, E)
+      subroutine NumericalFlux( xf, yf, zf, dt1, Q, F, G, H, E)
       use commons !, only: is, ie, in
       implicit none
       integer::i,j,k
-      real(8), intent(in) :: x1a(:), x2a(:), x3a(:)
+      real(8), intent(in) :: xf(:), yf(:), zf(:)
+      real(8), intent(in) :: dt1
       real(8), intent(in) :: Q(:,:,:,:)
       real(8), intent(out) :: F(:,:,:,:)
       real(8), intent(out) :: G(:,:,:,:)
@@ -683,8 +670,8 @@ contains
       real(8) :: dQm(NVAR), dQp(NVAR), dQmon(NVAR)
       real(8) :: ddmon, dvmon, dpmon
 
-      real(8),dimension(in,jn,kn) :: e2_x1a, e3_x1a
-      real(8),dimension(in,jn,kn) :: e1_x2a, e3_x2a
+      real(8),dimension(in,jn,kn) :: e2_xf, e3_xf
+      real(8),dimension(in,jn,kn) :: e1_yf, e3_yf
       real(8),dimension(in,jn,kn) :: weight1, weight2, weight3
       real(8) :: wghtCT
 
@@ -728,11 +715,11 @@ contains
       do j=js-1,je+1
       do i=is-1,ie+1
 !        call HLL(1,Ql(i,j,k,:),Qr(i,j,k,:),flx)
-        call HLLD(1,Ql(i,j,k,:),Qr(i,j,k,:),x1a(i+1)-x1a(i),flx,wghtCT)
+        call HLLD(1,Ql(i,j,k,:),Qr(i,j,k,:),xf(i+1)-xf(i),dt1,flx,wghtCT)
 
          F(i,j,k,1:NVAR)  = flx(1:NVAR)
-         e3_x1a(i,j,k) =  -flx(IB2)
-         e2_x1a(i,j,k) =   flx(IB3)
+         e3_xf(i,j,k) =  -flx(IB2)
+         e2_xf(i,j,k) =   flx(IB3)
 
          weight1(i,j,k) = wghtCT
       enddo
@@ -775,24 +762,22 @@ contains
       enddo
       enddo
 
-
       do k=ks,ke
       do j=js-1,je+1
       do i=is-1,ie+1
 !         call HLL(2,Ql(i,j,k,:),Qr(i,j,k,:),flx)
-         call HLLD(2,Ql(i,j,k,:),Qr(i,j,k,:),x2a(j+1) - x2a(j), flx,wghtCT)
+         call HLLD(2,Ql(i,j,k,:),Qr(i,j,k,:),yf(j+1) - yf(j), dt1, flx,wghtCT)
 
          G(i,j,k,1:NVAR) = flx(1:NVAR)
-         e1_x2a(i,j,k) =  - flx(IB3)
-         e3_x2a(i,j,k) =    flx(IB1)
+         e1_yf(i,j,k) =  - flx(IB3)
+         e3_yf(i,j,k) =    flx(IB1)
 
          weight2(i,j,k) = wghtCT
-
       enddo
       enddo
       enddo
 
-      call ElectricField( Q, Bc, e2_x1a, e3_x1a, e3_x2a, e1_x2a, weight1, weight2, E )
+      call ElectricField( Q, Bc, e2_xf, e3_xf, e3_yf, e1_yf, weight1, weight2, E )
 
       return
       end subroutine Numericalflux
@@ -819,7 +804,6 @@ contains
 !---------------------------------------------------------------------
       subroutine HLL(idir,Ql,Qr,flx)
       use commons !, only : is, ie, NVAR
-      use eosmod
       implicit none
       integer, intent(in) :: idir
       real(8),intent(in)  ::Ql(:), Qr(:)
@@ -975,13 +959,12 @@ contains
 !     Output: flx  : flux estimated at the initial discontinuity
 !            index: (IDN, IV1, IV2, IV3, IPR, IBperp1, IBperp2)
 !---------------------------------------------------------------------
-      subroutine HLLD(idir,Ql,Qr,dx,flx,wghtCT)
-      use commons !, only : is, ie, NVAR
-      use eosmod
+      subroutine HLLD(idir,Ql,Qr,dx,dt1,flx,wghtCT)
+      use commons 
       implicit none
       integer, intent(in) :: idir
       real(8),intent(in)  :: Ql(:), Qr(:)
-      real(8),intent(in)  :: dx
+      real(8),intent(in)  :: dx, dt1
       real(8),intent(out) :: flx(:)
       real(8),intent(out) :: wghtCT
       integer :: IVpara, IVperp1, IVperp2
@@ -1212,9 +1195,8 @@ contains
            endif
            flx(IBpara) = 0.0d0
 
-           v_over_c = 1024.0d0*dt*flx(IDN)/( dx*( Ql(IDN) + Qr(IDN) ) )
+           v_over_c = 1024.0d0*dt1*flx(IDN)/( dx*( Ql(IDN) + Qr(IDN) ) )
            wghtCT = 0.5d0 + max( -0.5d0, min(0.5d0, v_over_c) )
-
 
       return
       end subroutine HLLD
@@ -1230,15 +1212,15 @@ contains
 !
 !     Output: flux : the numerical flux estimated at the cell boundary
 !---------------------------------------------------------------------
-      subroutine ElectricField( Q, Bc, e2_x1a, e3_x1a, e3_x2a, e1_x2a, weight1, weight2, E )
+      subroutine ElectricField( Q, Bc, e2_xf, e3_xf, e3_yf, e1_yf, weight1, weight2, E )
       use commons !, only: is, ie, in
       implicit none
       integer::i,j,k
       real(8), intent(in)  :: Q(:,:,:,:), Bc(:,:,:,:)
-      real(8), intent(in)  :: e2_x1a(:,:,:)
-      real(8), intent(in)  :: e3_x1a(:,:,:)
-      real(8), intent(in)  :: e1_x2a(:,:,:)
-      real(8), intent(in)  :: e3_x2a(:,:,:)
+      real(8), intent(in)  :: e2_xf(:,:,:)
+      real(8), intent(in)  :: e3_xf(:,:,:)
+      real(8), intent(in)  :: e1_yf(:,:,:)
+      real(8), intent(in)  :: e3_yf(:,:,:)
       real(8), intent(in)  :: weight1(:,:,:)
       real(8), intent(in)  :: weight2(:,:,:)
       real(8), intent(out) :: E(:,:,:,:)
@@ -1255,38 +1237,38 @@ contains
 
       do j=js, je
       do i=is, ie+1
-           E(i,j,ke+1,2) = e2_x1a(i,j,ks)
-           E(i,j,ks  ,2) = e2_x1a(i,j,ks)
+           E(i,j,ke+1,2) = e2_xf(i,j,ks)
+           E(i,j,ks  ,2) = e2_xf(i,j,ks)
       enddo
       enddo
 
       do j=js, je+1
       do i=is, ie
-           E(i,j,ke+1,1) = e1_x2a(i,j,ks)
-           E(i,j,ks  ,1) = e1_x2a(i,j,ks)
+           E(i,j,ke+1,1) = e1_yf(i,j,ks)
+           E(i,j,ks  ,1) = e1_yf(i,j,ks)
       enddo
       enddo
 
       do k=ks,ke
       do j=js, je+1
       do i=is, ie+1
-          de3_l2 = (1.0-weight1(i,j-1,k))*(e3_x2a(i  ,j,k) - Etmp(i  ,j-1,k)) + &
-                   (    weight1(i,j-1,k))*(e3_x2a(i-1,j,k) - Etmp(i-1,j-1,k))
+          de3_l2 = (1.0-weight1(i,j-1,k))*(e3_yf(i  ,j,k) - Etmp(i  ,j-1,k)) + &
+                   (    weight1(i,j-1,k))*(e3_yf(i-1,j,k) - Etmp(i-1,j-1,k))
 
-          de3_r2 = (1.0-weight1(i,j,k))*(e3_x2a(i,j,k) - Etmp(i,j,k)) + &
-                   (    weight1(i,j,k))*(e3_x2a(i-1,j,k) - Etmp(i-1,j,k))
+          de3_r2 = (1.0-weight1(i,j,k))*(e3_yf(i,j,k) - Etmp(i,j,k)) + &
+                   (    weight1(i,j,k))*(e3_yf(i-1,j,k) - Etmp(i-1,j,k))
 
-          de3_l1 = (1.0-weight2(i-1,j,k))*(e3_x1a(i,j,k) - Etmp(i-1,j,k)) + &
-                   (    weight2(i-1,j,k))*(e3_x1a(i,j-1,k) - Etmp(i-1,j-1,k))
+          de3_l1 = (1.0-weight2(i-1,j,k))*(e3_xf(i,j,k) - Etmp(i-1,j,k)) + &
+                   (    weight2(i-1,j,k))*(e3_xf(i,j-1,k) - Etmp(i-1,j-1,k))
 
-          de3_r1 = (1.0-weight2(i,j,k))*(e3_x1a(i,j,k) - Etmp(i,j,k)) + &
-                   (    weight2(i,j,k))*(e3_x1a(i,j-1,k) - Etmp(i,j-1,k  ))
+          de3_r1 = (1.0-weight2(i,j,k))*(e3_xf(i,j,k) - Etmp(i,j,k)) + &
+                   (    weight2(i,j,k))*(e3_xf(i,j-1,k) - Etmp(i,j-1,k  ))
 
            E(i,j,k,3) = 0.25d0*( de3_l1 + de3_r1 + de3_l2 + de3_r2 + &
-                              e3_x2a(i-1,j,k) + e3_x2a(i,j,k) + e3_x1a(i,j-1,k) + e3_x1a(i,j,k))
-!                          print*,i,j,k,e3_x2a(i-1,j,k) , e3_x2a(i,j,k) , e3_x1a(i,j-1,k) , e3_x1a(i,j,k)
+                              e3_yf(i-1,j,k) + e3_yf(i,j,k) + e3_xf(i,j-1,k) + e3_xf(i,j,k))
+!                          print*,i,j,k,e3_yf(i-1,j,k) , e3_yf(i,j,k) , e3_xf(i,j-1,k) , e3_xf(i,j,k)
 
-!          E(i,j,k,3) = 0.25d0*( e3_x2a(i-1,j,k) + e3_x2a(i,j,k) + e3_x1a(i,j-1,k) + e3_x1a(i,j,k))
+!          E(i,j,k,3) = 0.25d0*( e3_yf(i-1,j,k) + e3_yf(i,j,k) + e3_xf(i,j-1,k) + e3_xf(i,j,k))
       enddo
       enddo
       enddo
@@ -1305,11 +1287,11 @@ contains
       end subroutine ElectricField 
 !!=====================================================================
 
-      subroutine UpdateConsv( dt1, x1a, x2a, x3a, F, G, H, E, Q, Uo, Bso, U, Bs)
+      subroutine UpdateConsv( dt1, xf, yf, zf, F, G, H, E, Q, Uo, Bso, U, Bs)
       use commons
       implicit none
       real(8), intent(in) :: dt1
-      real(8), intent(in)  :: x1a(:), x2a(:), x3a(:)
+      real(8), intent(in)  :: xf(:), yf(:), zf(:)
       real(8), intent(in)  :: F(:,:,:,:), G(:,:,:,:), H(:,:,:,:)
       real(8), intent(in)  :: Uo(:,:,:,:), Q(:,:,:,:), Bso(:,:,:,:)
       real(8), intent(out) :: U(:,:,:,:), Bs(:,:,:,:), E(:,:,:,:)
@@ -1321,10 +1303,10 @@ contains
       do k=ks,ke
       do j=js,je
       do i=is,ie
-         U(i,j,k,n) = Uo(i,j,k,n) + dt1*(- F(i+1,j,k,n) + F(i,j,k,n))/(x1a(i+1)-x1a(i)) &
-                                  + dt1*(- G(i,j+1,k,n) + G(i,j,k,n))/(x2a(j+1)-x2a(j)) 
+         U(i,j,k,n) = Uo(i,j,k,n) + dt1*(- F(i+1,j,k,n) + F(i,j,k,n))/(xf(i+1)-xf(i)) &
+                                  + dt1*(- G(i,j+1,k,n) + G(i,j,k,n))/(yf(j+1)-yf(j)) 
 
-!        if(n==1) print*,x1b(i),- F(i+1,j,k,n) + F(i,j,k,n)
+!        if(n==1) print*,xv(i),- F(i+1,j,k,n) + F(i,j,k,n)
       enddo
       enddo
       enddo
@@ -1345,7 +1327,7 @@ contains
       do j=js,je
       do i=is,ie+1
            Bs(i,j,k,1) = Bso(i,j,k,1) &
-                       - dt1*(E(i,j+1,k,3) - E(i,j,k,3))/(x2b(j+1) - x2b(j))
+                       - dt1*(E(i,j+1,k,3) - E(i,j,k,3))/(yv(j+1) - yv(j))
       enddo
       enddo
       enddo
@@ -1354,7 +1336,7 @@ contains
       do j=js,je+1
       do i=is,ie
            Bs(i,j,k,2) = Bso(i,j,k,2) &
-                       + dt1*(E(i+1,j,k,3) - E(i,j,k,3))/(x1b(i+1) - x1b(i))
+                       + dt1*(E(i+1,j,k,3) - E(i,j,k,3))/(xv(i+1) - xv(i))
       enddo
       enddo
       enddo
@@ -1363,8 +1345,8 @@ contains
       do j=js,je
       do i=is,ie
            Bs(i,j,k,3) = Bso(i,j,k,3) &
-                       - dt1*(E(i+1,j,k,2) - E(i,j,k,2))/(x1b(i+1) - x1b(i)) &
-                       + dt1*(E(i,j+1,k,1)  - E(i,j,k,1))/(x2b(j+1) - x2b(j))
+                       - dt1*(E(i+1,j,k,2) - E(i,j,k,2))/(xv(i+1) - xv(i)) &
+                       + dt1*(E(i,j+1,k,1)  - E(i,j,k,1))/(yv(j+1) - yv(j))
       enddo
       enddo
       enddo
@@ -1374,10 +1356,10 @@ contains
       return
       end subroutine UpdateConsv
 
-      subroutine Output( x1a, x1b, x2a, x2b, Q, Bc, Bs )
+      subroutine Output( xf, xv, yf, yv, Q, Bc, Bs )
       use commons
       implicit none
-      real(8), intent(in) :: x1a(:), x1b(:), x2a(:), x2b(:), Q(:,:,:,:), Bc(:,:,:,:), Bs(:,:,:,:)
+      real(8), intent(in) :: xf(:), xv(:), yf(:), yv(:), Q(:,:,:,:), Bc(:,:,:,:), Bs(:,:,:,:)
       integer::i,j,k
       character(100),parameter::dirname="snap_B0.5_ct"
       character(100),parameter::base="rt"
@@ -1412,12 +1394,12 @@ contains
       do k=ks,ke
       do j=js,je
       do i=is,ie
-         divB = ( Bc(i+1,j,k,1) - Bc(i-1,j,k,1) )/(x1b(i+1) - x1b(i-1)) &
-              + ( Bc(i,j+1,k,2) - Bc(i,j-1,k,2) )/(x2b(j+1) - x2b(j-1)) 
-         divB1 = ( Bs(i+1,j,k,1) - Bs(i,j,k,1) )/(x1a(i+1) - x1a(i)) &
-               + ( Bs(i,j+1,k,2) - Bs(i,j,k,2) )/(x2a(j+1) - x2a(j)) 
+         divB = ( Bc(i+1,j,k,1) - Bc(i-1,j,k,1) )/(xv(i+1) - xv(i-1)) &
+              + ( Bc(i,j+1,k,2) - Bc(i,j-1,k,2) )/(yv(j+1) - yv(j-1)) 
+         divB1 = ( Bs(i+1,j,k,1) - Bs(i,j,k,1) )/(xf(i+1) - xf(i)) &
+               + ( Bs(i,j+1,k,2) - Bs(i,j,k,2) )/(yf(j+1) - yf(j)) 
 
-          write(unitbin,*) x1b(i), x2b(j), Q(i,j,k,IDN), Q(i,j,k,IV1), Q(i,j,k,IV2), Q(i,j,k,IV3), Q(i,j,k,IPR), &
+          write(unitbin,*) xv(i), yv(j), Q(i,j,k,IDN), Q(i,j,k,IV1), Q(i,j,k,IV2), Q(i,j,k,IV3), Q(i,j,k,IPR), &
               Bc(i,j,k,1), Bc(i,j,k,2), Bc(i,j,k,3), divB,divB1
       enddo
       enddo
@@ -1469,20 +1451,20 @@ contains
       return
       end function
 
-      real(8) function divergenceB(x1a, x2a, Bc)
+      real(8) function divergenceB(xf, yf, Bc)
       use commons
       use eosmod
       implicit none
-      real(8), intent(in) :: x1a(:), x2a(:), Bc(:,:,:,:)
+      real(8), intent(in) :: xf(:), yf(:), Bc(:,:,:,:)
       integer::i,j,k
       real(8) :: error
 
       do k=ks,ke
       do j=js,je
       do i=is,ie
-         error = dabs( ( Bc(i+1,j,k,1) - Bc(i-1,j,k,1) )/(x1a(i+1)-x1a(i-1))  &
-                    + ( Bc(i,j+1,k,2) - Bc(i,j-1,k,2) )/(x2a(j+1)-x2a(j-1)) )/ &
-                    dsqrt( Bc(i,j,k,IB1)**2 + Bc(i,j,k,2)**2 )*min(x1a(i+1) - x1a(i),x2a(j+1)-x2a(j))
+         error = dabs( ( Bc(i+1,j,k,1) - Bc(i-1,j,k,1) )/(xf(i+1)-xf(i-1))  &
+                    + ( Bc(i,j+1,k,2) - Bc(i,j-1,k,2) )/(yf(j+1)-yf(j-1)) )/ &
+                    dsqrt( Bc(i,j,k,IB1)**2 + Bc(i,j,k,2)**2 )*min(xf(i+1) - xf(i),yf(j+1)-yf(j))
 
          divergenceB = divergenceB + error
       enddo
@@ -1493,11 +1475,11 @@ contains
       return
       end function
 
-      real(8) function dvy(x1a, x2a, Q)
+      real(8) function dvy(xf, yf, Q)
       use commons
       use eosmod
       implicit none
-      real(8), intent(in) :: x1a(:), x2a(:), Q(:,:,:,:)
+      real(8), intent(in) :: xf(:), yf(:), Q(:,:,:,:)
       integer::i,j,k
       real(8) :: error
 
@@ -1514,11 +1496,11 @@ contains
       return
       end function
 
-      real(8) function Analysis(x1b, x2b, Q, Bc)
+      real(8) function Analysis(xv, yv, Q, Bc)
       use commons
       use eosmod
       implicit none
-      real(8), intent(in) :: x1b(:), x2b(:),  Q(:,:,:,:), Bc(:,:,:,:)
+      real(8), intent(in) :: xv(:), yv(:),  Q(:,:,:,:), Bc(:,:,:,:)
       integer::i,j,k
       real(8) :: dvx
 
