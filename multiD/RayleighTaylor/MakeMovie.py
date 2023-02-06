@@ -14,7 +14,7 @@ xmax =  0.25
 ymin = -0.75
 ymax =  0.75
 
-dirname = "snap_B0.5_ct"
+dirname = "snap_B0.0"
 base = "rt"
 suffix = ".dat"
 fname_anime = "animation.mp4"
