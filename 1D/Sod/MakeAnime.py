@@ -9,6 +9,10 @@ plt.rcParams['pdf.use14corefonts'] = True
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.size'] = 20
 
+dirname = "snap"
+basename = "sod"
+
+
 x = np.linspace(0, np.pi * 4, 100)
 
 fig = plt.figure(figsize=(8,10)) 
@@ -36,8 +40,9 @@ pre_ana = anasol[:,3]
 
 # フレームごとの Artist を作成する。
 icount = 0
-for istep in range(1,40+1):
-    foutname = "snap/t%05d.dat"%(istep)
+#for istep in range(1,40+1):
+for istep in range(40,40+1):
+    foutname = dirname + "/" + basename + "%05d.dat"%(istep)
     print("reading " + foutname)
     with open(foutname, 'r') as data_file: 
         line = data_file.readline() 
@@ -66,6 +71,7 @@ for istep in range(1,40+1):
 
     # このフレームの Artist 一覧を追加する。
     frames.append([pg00,pg01,pg10,pg11,pg20,pg21,pg3])
+    plt.savefig("%05d.pdf"%(istep),bbox_inches="tight")
 
     icount +=1
 
@@ -73,6 +79,6 @@ for istep in range(1,40+1):
 ani = ArtistAnimation(fig, frames, interval=50)
 
 # mp4 画像として保存する。
-ani.save("animation.mp4", writer="imagemagick")
-#plt.show()
+ani.save(dirname + '/' + basename + ".mp4", writer="imagemagick")
+plt.show()
 #plt.close()
