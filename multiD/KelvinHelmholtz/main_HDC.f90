@@ -6,7 +6,7 @@ integer,parameter::ntimemax=200000     ! the maximum timesteps
 real(8)::time,dt                    ! time, timewidth
 data time / 0.0d0 /
 real(8),parameter:: timemax=20.0d0   
-real(8),parameter:: dtout=0.2d0
+real(8),parameter:: dtout=0.1d0
 
 integer, parameter :: flag_HDC = 1 ! 1 --> HDC on , 0 --> HDC off
 integer, parameter :: flag_flux = 1 ! 1 (HLL), 2 (HLLC), 3 (HLLD)
@@ -72,7 +72,8 @@ integer, parameter :: IEN = 5
       call GenerateProblem(xv, yv, zv, Q)
       call ConsvVariable(Q, U)
       call BoundaryCondition(xf,yf,Q)
-      call Output( xf, xv, yf, yv, Q )
+      call Output( .TRUE., xf, xv, yf, yv, Q )
+
 
 
 
@@ -97,7 +98,8 @@ integer, parameter :: IEN = 5
 
          time=time+dt
          ntime = ntime+1
-         call Output( xf, xv, yf, yv, Q)
+!         call Output( .FALSE., xf, xv, yf, yv, Q)
+         call Output( .true., xf, xv, yf, yv, Q)
 
          print*, "ntime = ",ntime, "time = ",time, dt
 
@@ -108,9 +110,10 @@ integer, parameter :: IEN = 5
          endif
 
          if(time >= timemax) exit mloop
+         if(ntime.eq.2)exit
       enddo mloop
       close(unitevo)
-      call Output( xf, xv, yf, yv, Q)
+      call Output( .TRUE., xf, xv, yf, yv, Q)
 
 !      write(6,*) "program has been finished"
 contains
@@ -892,32 +895,31 @@ contains
       return
       end subroutine UpdateConsv
 
-      subroutine Output( xf, xv, yf, yv, Q )
+      subroutine Output( flag_output, xf, xv, yf, yv, Q )
       real(8), intent(in) :: xf(:), xv(:), yf(:), yv(:), Q(:,:,:,:)
       integer::i,j,k
+      logical, intent(in) :: flag_output ! false --> output per dtout, true --> force to output
       character(20),parameter::dirname="snap_B0.8_dc1"
       character(20),parameter::base="kh"
       character(20),parameter::suffix=".dat"
       character(100)::filename
-      real(8),save::tout
-      data tout / 0.0d0 /
-      integer::nout
-      data nout / 1 /
+      real(8), save :: tout = - dtout
+      integer::nout = 0
       integer,parameter:: unitout=17
       integer,parameter:: unitbin=13
       integer,parameter:: gs=1
 
       logical, save:: is_inited
       data is_inited /.false./
-      real(8) :: divB
 
       if (.not. is_inited) then
          call makedirs(dirname)
          is_inited =.true.
       endif
 
-!      print*, time, tout+dtout, time+1.0d-14 .lt. tout+dtout
-      if(time + 1.0d-14.lt. tout+dtout) return
+      if( .not.flag_output) then
+          if( time + 1.0d-14.lt. tout+dtout) return
+      endif
 
       write(filename,'(i5.5)') nout
       filename = trim(dirname)//"/"//trim(base)//trim(filename)//trim(suffix)
@@ -928,18 +930,13 @@ contains
       do j=js,je
       do i=is,ie
           write(unitbin,*) xv(i), yv(j), Q(i,j,k,IDN), Q(i,j,k,IV1), Q(i,j,k,IV2), Q(i,j,k,IV3), &
-                          Q(i,j,k,IPR), Q(i,j,k,IB1), Q(i,j,k,IB2), Q(i,j,k,IB3),Q(i,j,k,IPS), Q(i,j,k,ISC) 
+                          Q(i,j,k,IPR), Q(i,j,k,IB1), Q(i,j,k,IB2), Q(i,j,k,IB3),Q(i,j,k,ISC), Q(i,j,k,IPS) 
       enddo
       enddo
       enddo
       close(unitbin)
-!      open(unitbin,file=filename,status='replace',form='binary') 
-!      open(unitbin,file=filename,status='replace',form='unformatted') 
-!      write(unitbin) x1out(:,:)
-!      write(unitbin) hydout(:,:)
-!      close(unitbin)
-!
-      write(6,*) "output:",nout,time
+
+      write(6,*) "output:  ",filename,time
 
       nout=nout+1
       tout=tout + dtout
