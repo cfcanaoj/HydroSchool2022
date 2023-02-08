@@ -426,7 +426,7 @@ contains
 
 !$omp parallel 
       do k=ks,ke
-      !$omp do private( i, n, dQp, dQm, dQmon )
+      !$omp do private( i, dQp, dQm, dQmon )
       do j=js,je
       do i=is-1,ie+1
          dQp(1:NVAR) = Q(i+1,j,k,1:NVAR) - Q(i  ,j,k,1:NVAR)
