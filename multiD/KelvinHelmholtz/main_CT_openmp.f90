@@ -1,4 +1,5 @@
 program main
+!$ use omp_lib
 implicit none
 
 integer::ntime = 0 ! counter of the timestep
@@ -64,20 +65,26 @@ real(8),dimension(nxtot,nytot,nztot,NVAR) :: F
 real(8),dimension(nxtot,nytot,nztot,NVAR) :: G
 real(8),dimension(nxtot,nytot,nztot,NVAR) :: H
 real(8),dimension(nxtot,nytot,nztot,3) :: E 
-real(8) :: dt
+real(8) :: dt, stime
 integer :: i,j,k
 
+
+!$omp parallel
+  print *, "Hello! N =", omp_get_num_threads(), " and I am ", omp_get_thread_num()
+!$omp end parallel
 
 !      write(6,*) "setup grids and initial condition"
     call GenerateGrid(xf, xv, yf, yv, zf, zv)
     call GenerateProblem(xv, yv, zv, Q, Bs, Bc)
     call ConsvVariable(Q, Bc, U)
     call BoundaryCondition( Q, Bs, Bc )
-!    call Output( .TRUE., xf, xv, yf, yv, Q, Bc )
+    call Output( .TRUE., xf, xv, yf, yv, Q, Bc )
 
 
 
-    open(1,file="vy_evo_B0.8_ct_hll1.dat",action="write")
+!    open(1,file="vy_evo_B0.8_ct_hll1.dat",action="write")
+    open(1,file="cpu1_ct.dat",action="write")
+  stime = omp_get_wtime()
 ! main loop
     mloop: do 
         call TimestepControl(xf, yf, zf, Q, Bc, dt)
@@ -105,16 +112,16 @@ integer :: i,j,k
              write(1,*) time, phys_evo(1:nevo)
              call flush(1)
          endif
-!         call Output( .FALSE., xf, xv, yf, yv, Q, Bc)
+         call Output( .FALSE., xf, xv, yf, yv, Q, Bc)
 !         call Output( .true., xf, xv, yf, yv, Q, Bc)
 
          print*, "time = ",time, "dt = ",dt
 
          if(time >= timemax) exit mloop
-         if( ntime == 10) exit
       enddo mloop
+      print*,"elapse time = ", omp_get_wtime() - stime, nx*ny*ntime/(omp_get_wtime() - stime)
       close(1)
-!      call Output( .TRUE., xf, xv, yf, yv, Q, Bc)
+      call Output( .TRUE., xf, xv, yf, yv, Q, Bc)
 
 
 !      write(6,*) "program has been finished"
@@ -369,6 +376,7 @@ contains
     integer::i,j,k
 
         do k=ks,ke
+       !$omp parallel do private(i)
         do j=js,je
         do i=is,ie
             U(i,j,k,IDN) = Q(i,j,k,IDN)
@@ -381,6 +389,7 @@ contains
             U(i,j,k,ISC) = Q(i,j,k,IDN)*Q(i,j,k,ISC)
         enddo
         enddo
+       !$omp end parallel do
         enddo
       
     return
@@ -396,6 +405,7 @@ contains
         call CellCenterMagneticField(is, ie, js, je, ks, ke, Bs, Bc)
 
         do k=ks,ke
+       !$omp parallel do private(i, inv_d)
         do j=js,je
         do i=is,ie
             Q(i,j,k,IDN) = U(i,j,k,IDN)
@@ -409,6 +419,7 @@ contains
             Q(i,j,k,ISC) = U(i,j,k,ISC)*inv_d
         enddo
         enddo
+        !$omp end parallel do
         enddo
 
     return
@@ -423,6 +434,7 @@ contains
     real(8) :: inv_d;
 
         do k=kbeg,kfin
+       !$omp parallel do private(i, inv_d)
         do j=jbeg,jfin
         do i=ibeg,ifin
             Bc(i,j,k,1) = 0.5d0*( Bs(i+1,j,k,1) + Bs(i,j,k,1) )
@@ -430,6 +442,7 @@ contains
             Bc(i,j,k,3) = 0.5d0*( Bs(i,j,k+1,3) + Bs(i,j,k,3) )
         enddo
         enddo
+        !$omp end parallel do
         enddo
 
     return
@@ -446,16 +459,19 @@ contains
         dtmin=1.0d90
 
         do k=ks,ke
+     !$omp parallel do private(i,dtl1,dtl2,cf) reduction (min: dtmin)
         do j=js,je
         do i=is,ie
             cf = dsqrt( (gam*Q(i,j,k,IPR) + Bc(i,j,k,1)**2 + Bc(i,j,k,2)**2 + Bc(i,j,k,3)**2)/Q(i,j,k,IDN))
          
             dtl1 =(xf(i+1)-xf(i))/(abs(Q(i,j,k,IVX)) + cf)
             dtl2 =(yf(j+1)-yf(j))/(abs(Q(i,j,k,IVY)) + cf)
-            dtlocal = min(dtl1,dtl2)
-            if(dtlocal .lt. dtmin) dtmin = dtlocal
+!            dtlocal = min(dtl1,dtl2)
+!            if(dtlocal .lt. dtmin) dtmin = dtlocal
+            dtmin = min(dtl1,dtl2,dtmin)
         enddo
         enddo
+      !$omp end parallel do
         enddo
 
         dt1 = Ccfl* dtmin*2.0d0
@@ -517,11 +533,14 @@ contains
     real(8),dimension(nxtot,nytot,nztot) :: e1_yf, e3_yf
     real(8),dimension(nxtot,nytot,nztot) :: weight1, weight2, weight3
     real(8) :: wghtCT
+
+    stime = omp_get_wtime()
     
-    
+!$omp parallel 
     ! numerical flux in the x direction
     ! hydro part
         do k=ks,ke
+      !$omp do private( i, j, dQp, dQm, dQmon )
         do j=js-1,je+1
         do i=is-1,ie+1
             dQp(1:NVAR) = Q(i+1,j,k,1:NVAR) - Q(i  ,j,k,1:NVAR)
@@ -533,12 +552,15 @@ contains
              ! Qr(i,j,k) --> W_(i-1/2,j,k)
             Ql(i+1,j,k,1:NVAR) = Q(i,j,k,1:NVAR) + 0.5d0*dQmon(1:NVAR)
             Qr(i  ,j,k,1:NVAR) = Q(i,j,k,1:NVAR) - 0.5d0*dQmon(1:NVAR)
+
         enddo
         enddo
+      !$omp end do
         enddo
     
         ! B field part
         do k=ks,ke
+      !$omp do private( i, dQp, dQm, dQmon )
         do j=js-1,je+1
         do i=is-1,ie+1
             dQp(1:3) = Bc(i+1,j,k,1:3) - Bc(i  ,j,k,1:3)
@@ -552,10 +574,12 @@ contains
             Qr(i  ,j,k,NVAR+1:NFLX) = Bc(i,j,k,1:3) - 0.5d0*dQmon(1:3)
         enddo
         enddo
+      !$omp end do
         enddo
     
         if (flag_flux == 1 ) then
             do k=ks,ke
+           !$omp do private( i, flx, wghtCT )
             do j=js-1,je+1
             do i=is,ie+1
                 call HLL(1,Ql(i,j,k,:),Qr(i,j,k,:),Bs(i,j,k,1),xf(i+1)-xf(i),flx,wghtCT)
@@ -582,9 +606,11 @@ contains
                  weight1(i,j,k) = wghtCT
             enddo
             enddo
+          !$omp end do
             enddo
         else if (flag_flux == 3 ) then
             do k=ks,ke
+           !$omp do private( i, flx, wghtCT )
             do j=js-1,je+1
             do i=is,ie+1
                 call HLLD(1,Ql(i,j,k,:),Qr(i,j,k,:),Bs(i,j,k,1),xf(i+1)-xf(i),flx,wghtCT)
@@ -606,12 +632,14 @@ contains
                  weight1(i,j,k) = wghtCT
             enddo
             enddo
+          !$omp end do
             enddo
         end if 
     
     
           ! numerical flux in the y direction
           do k=ks,ke
+      !$omp do private( i, dQp, dQm, dQmon )
           do j=js-1,je+1
           do i=is-1,ie+1
              dQp(1:NVAR) = Q(i,j+1,k,1:NVAR) - Q(i,j  ,k,1:NVAR)
@@ -625,10 +653,12 @@ contains
              Qr(i,j  ,k,1:NVAR) = Q(i,j,k,1:NVAR) - 0.5d0*dQmon(1:NVAR)
           enddo
           enddo
+          !$omp end do
           enddo
     
           ! B field part
           do k=ks,ke
+      !$omp do private( i, dQp, dQm, dQmon )
           do j=js-1,je+1
           do i=is-1,ie+1
              dQp(1:3) = Bc(i,j+1,k,1:3) - Bc(i,j  ,k,1:3)
@@ -642,10 +672,12 @@ contains
              Qr(i,j  ,k,NVAR+1:NFLX) = Bc(i,j,k,1:3) - 0.5d0*dQmon(1:3)
           enddo
           enddo
+          !$omp end do
           enddo
     
         if( flag_flux == 1 ) then
           do k=ks,ke
+         !$omp do private( i, flx, wghtCT )
           do j=js,je+1
           do i=is-1,ie+1
              call HLL(2,Ql(i,j,k,:),Qr(i,j,k,:),Bs(i,j,k,2),yf(j+1) - yf(j), flx,wghtCT)
@@ -663,9 +695,11 @@ contains
              weight2(i,j,k) = wghtCT
           enddo
           enddo
+          !$omp end do
           enddo
         else if (flag_flux == 3 ) then
           do k=ks,ke
+         !$omp do private( i, flx, wghtCT )
           do j=js,je+1
           do i=is-1,ie+1
              call HLLD(2,Ql(i,j,k,:),Qr(i,j,k,:),Bs(i,j,k,2),yf(j+1) - yf(j), flx,wghtCT)
@@ -684,9 +718,13 @@ contains
              weight2(i,j,k) = wghtCT
           enddo
           enddo
+          !$omp end do
           enddo
         endif
+
+!$omp end parallel
     
+!     print*, omp_get_wtime() - stime
           call ElectricField( Q, Bc, e2_xf, e3_xf, e3_yf, e1_yf, weight1, weight2, E )
     
         return
@@ -1112,30 +1150,38 @@ contains
       real(8) :: Etmp(nxtot,nytot,nztot) 
       real(8) :: de3_l1, de3_r1, de3_l2, de3_r2
 
+!$omp parallel
       do k=ks,ke
+      !$omp do private(i)
       do j=js-1, je+1
       do i=is-1, ie+1
            Etmp(i,j,k) = Q(i,j,k,IVY)*Bc(i,j,k,1) - Q(i,j,k,IVX)*Bc(i,j,k,2)
       enddo
       enddo
+      !$omp end do 
       enddo
 
+      !$omp do private(i)
       do j=js, je
       do i=is, ie+1
            E(i,j,ke+1,2) = e2_xf(i,j,ks)
            E(i,j,ks  ,2) = e2_xf(i,j,ks)
       enddo
       enddo
+      !$omp end do 
 
+      !$omp do private(i)
       do j=js, je+1
       do i=is, ie
            E(i,j,ke+1,1) = e1_yf(i,j,ks)
            E(i,j,ks  ,1) = e1_yf(i,j,ks)
       enddo
       enddo
+      !$omp end do 
 
 
       do k=ks,ke
+      !$omp do private(i, de3_l2, de3_r2, de3_l1, de3_r1 )
       do j=js, je+1
       do i=is, ie+1
           de3_l2 = (1.0d0-weight1(i,j-1,k))*(e3_yf(i  ,j,k) - Etmp(i  ,j-1,k)) + &
@@ -1154,8 +1200,10 @@ contains
                           e3_yf(i-1,j,k) + e3_yf(i,j,k) + e3_xf(i,j-1,k) + e3_xf(i,j,k))
       enddo
       enddo
+      !$omp end do 
       enddo
 
+!$omp end parallel
 
       return
       end subroutine ElectricField 
@@ -1172,6 +1220,9 @@ contains
       real(8) :: divB 
       integer::i,n,j,k
 
+!$omp parallel 
+
+      !$omp do private( i,j,k )
       do n=1,NVAR
       do k=ks,ke
       do j=js,je
@@ -1182,26 +1233,32 @@ contains
       enddo
       enddo
       enddo
+      !$omp end do
 
       do k=ks,ke
+      !$omp do private( i )
       do j=js,je
       do i=is,ie+1
            Bs(i,j,k,1) = Bso(i,j,k,1) &
                        - dt1*(E(i,j+1,k,3) - E(i,j,k,3))/(yv(j+1) - yv(j))
       enddo
       enddo
+      !$omp end do
       enddo
 
       do k=ks,ke
+      !$omp do private( i )
       do j=js,je+1
       do i=is,ie
            Bs(i,j,k,2) = Bso(i,j,k,2) &
                        + dt1*(E(i+1,j,k,3) - E(i,j,k,3))/(xv(i+1) - xv(i))
       enddo
       enddo
+      !$omp end do
       enddo
 
       do k=ks,ke+1
+      !$omp do private( i )
       do j=js,je
       do i=is,ie
            Bs(i,j,k,3) = Bso(i,j,k,3) &
@@ -1209,9 +1266,11 @@ contains
                        + dt1*(E(i,j+1,k,1) - E(i,j,k,1))/(yf(j+1) - yf(j))
       enddo
       enddo
+      !$omp end do
       enddo
 
 
+      !$omp end parallel
 
       return
       end subroutine UpdateConsv
@@ -1222,7 +1281,8 @@ contains
       real(8), intent(in) :: xf(:), xv(:), yf(:), yv(:)
       real(8), intent(in) :: Q(:,:,:,:), Bc(:,:,:,:)
       integer::i,j,k
-      character(20),parameter::dirname="snap_B0.8_ct_hll"
+!      character(20),parameter::dirname="snap_B0.8_ct_hll"
+      character(20),parameter::dirname="snap_ct_cpu1"
       character(20),parameter::base="kh"
       character(20),parameter::suffix=".dat"
       character(40)::filename

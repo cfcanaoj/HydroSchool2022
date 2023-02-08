@@ -10,7 +10,7 @@ plt.rcParams['text.usetex'] = True
 plt.rcParams['font.size'] = 20
 
 dirname = "snap"
-basename = "sod"
+basename = "sod_lax"
 
 
 x = np.linspace(0, np.pi * 4, 100)
@@ -40,8 +40,8 @@ pre_ana = anasol[:,3]
 
 # フレームごとの Artist を作成する。
 icount = 0
-#for istep in range(1,40+1):
-for istep in range(40,40+1):
+for istep in range(0,40+1):
+#for istep in range(40,40+1):
     foutname = dirname + "/" + basename + "%05d.dat"%(istep)
     print("reading " + foutname)
     with open(foutname, 'r') as data_file: 

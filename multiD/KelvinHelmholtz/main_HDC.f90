@@ -9,10 +9,10 @@ real(8),parameter:: timemax=20.0d0
 real(8),parameter:: dtout=0.1d0
 
 integer, parameter :: flag_HDC = 1 ! 1 --> HDC on , 0 --> HDC off
-integer, parameter :: flag_flux = 1 ! 1 (HLL), 2 (HLLC), 3 (HLLD)
+integer, parameter :: flag_flux = 3 ! 1 (HLL), 2 (HLLC), 3 (HLLD)
 
-integer,parameter::nx=128*1        ! the number of grids in the simulation box
-integer,parameter::ny=128*2  ! the number of grids in the simulation box
+integer,parameter::nx=128*1*4        ! the number of grids in the simulation box
+integer,parameter::ny=128*2 *4 ! the number of grids in the simulation box
 integer,parameter::nz=1          ! the number of grids in the simulation box
 integer,parameter::mgn=2         ! the number of ghost cells
 integer,parameter::in=nx+2*mgn+1 ! the total number of grids including ghost cells
@@ -31,7 +31,8 @@ real(8),parameter::x3min=0.0d0,x3max=1.0d0
 real(8),parameter::Ccfl=0.4d0
 real(8),parameter::gam=5.0d0/3.0d0 !! adiabatic index
 
-real(8) ch
+real(8) ch       ! advection speed of divergence B
+real(8), parameter :: alpha = 0.1d0    ! decay timescale of divergence B
 
 integer, parameter :: IDN = 1
 integer, parameter :: IM1 = 2
@@ -52,27 +53,27 @@ integer, parameter :: IV3 = 4
 integer, parameter :: IEN = 5
 
 
-      integer, parameter :: nevo = 2
-      integer, parameter :: unitevo =11
-      real(8) :: phys_evo(nevo)
+integer, parameter :: nevo = 2
+integer, parameter :: unitevo =11
+real(8) :: phys_evo(nevo)
 
-      real(8),dimension(in)::xf,xv
-      real(8),dimension(jn)::yf,yv
-      real(8),dimension(kn)::zf,zv
-      real(8),dimension(in,jn,kn,NVAR) :: Uo
-      real(8),dimension(in,jn,kn,NVAR) :: U
-      real(8),dimension(in,jn,kn,NVAR) :: Q
-      real(8),dimension(in,jn,kn,NFLX) :: F
-      real(8),dimension(in,jn,kn,NFLX) :: G
-      real(8),dimension(in,jn,kn,NFLX) :: H
-      integer :: i, j,k
+real(8),dimension(in)::xf,xv
+real(8),dimension(jn)::yf,yv
+real(8),dimension(kn)::zf,zv
+real(8),dimension(in,jn,kn,NVAR) :: Uo
+real(8),dimension(in,jn,kn,NVAR) :: U
+real(8),dimension(in,jn,kn,NVAR) :: Q
+real(8),dimension(in,jn,kn,NFLX) :: F
+real(8),dimension(in,jn,kn,NFLX) :: G
+real(8),dimension(in,jn,kn,NFLX) :: H
+integer :: i, j,k
 
 !      write(6,*) "setup grids and initial condition"
       call GenerateGrid(xf, xv, yf, yv, zf, zv)
       call GenerateProblem(xv, yv, zv, Q)
       call ConsvVariable(Q, U)
       call BoundaryCondition(xf,yf,Q)
-      call Output( .TRUE., xf, xv, yf, yv, Q )
+!      call Output( .TRUE., xf, xv, yf, yv, Q )
 
 
 
@@ -99,7 +100,7 @@ integer, parameter :: IEN = 5
          time=time+dt
          ntime = ntime+1
 !         call Output( .FALSE., xf, xv, yf, yv, Q)
-         call Output( .true., xf, xv, yf, yv, Q)
+!         call Output( .true., xf, xv, yf, yv, Q)
 
          print*, "ntime = ",ntime, "time = ",time, dt
 
@@ -110,10 +111,10 @@ integer, parameter :: IEN = 5
          endif
 
          if(time >= timemax) exit mloop
-         if(ntime.eq.2)exit
+         if(ntime.eq.10)exit
       enddo mloop
       close(unitevo)
-      call Output( .TRUE., xf, xv, yf, yv, Q)
+!      call Output( .TRUE., xf, xv, yf, yv, Q)
 
 !      write(6,*) "program has been finished"
 contains
@@ -886,7 +887,7 @@ contains
       do k=ks,ke
       do j=js,je
       do i=is,ie
-         U(i,j,k,IPS) = U(i,j,k,IPS)*dexp(-0.1d0*Ccfl*dt1/dt)
+         U(i,j,k,IPS) = U(i,j,k,IPS)*dexp(-alpha*Ccfl*dt1/dt)
       enddo
       enddo
       enddo
