@@ -1,7 +1,12 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import re
+
+def makedirs(path):
+    if not os.path.isdir(path):
+        os.makedirs(path)
 
 fig = plt.figure()  
 plt.xlim(0, 1)     
@@ -14,16 +19,15 @@ xmax =  0.25
 ymin = -0.75
 ymax =  0.75
 
-dirname = "snap_B1.0"
+dirname = "snap_B0.5_hdc"
 base = "rt"
 suffix = ".dat"
-fname_anime = "animation.mp4"
 
-step_s = 15
-step_e = 16
+step_s = 25
+step_e = 25
 
 graph_list = [] 
-for istep in range(step_s,step_e):
+for istep in range(step_s,step_e+1):
     foutname = dirname + "/" + base + "%05d"%(istep) + suffix
     print("making plot ",foutname)
     with open(foutname, 'r') as data_file:
@@ -57,6 +61,7 @@ for istep in range(step_s,step_e):
         plt.colorbar(im,orientation="vertical")
     graph_list.append([pg00,im])               
 
+    makedirs(dirname + "/pdffile")
     plt.savefig(dirname + "/pdffile/rt%05d.pdf"%(istep),bbox_inches="tight", pat_inches=1.0,dpi=1000)
 
 #ani = animation.ArtistAnimation(fig, graph_list, interval=200) 

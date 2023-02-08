@@ -14,13 +14,13 @@ xmax =  0.25
 ymin = -0.75
 ymax =  0.75
 
-dirname = "snap_B0.0"
+dirname = "snap_B0.5_nohdc"
 base = "rt"
 suffix = ".dat"
 fname_anime = "animation.mp4"
 
 step_s = 1
-step_e = 20
+step_e = 30
 
 graph_list = [] 
 for istep in range(step_s,step_e+1):
