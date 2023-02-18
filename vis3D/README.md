@@ -36,8 +36,12 @@ You can find the data in `hdfdata`.
 ## Preparation
 Abobe, you used a library in `~/hydro17/hdf5`. After the school you cannot use it. You need to install `hdf5` in your home directory in analysis server. 
 
+### Download
 Download `hdf5-1.10.6.tar.gz` from the following URL: https://www.hdfgroup.org/downloads/hdf5/source-code/
-Here we use the old version of HDF5. Then put it in your home directory. The follwing command enable you use the HDF5. Now we assume the use of the intel compiller(`module load intel` has been already written in ``~/.basrhrc ). If you prefer to use another compiler, change the argument.
+Here we use the old version of HDF5. Then put it in your home directory of analysis server. 
+
+### Setup
+The follwing command enable you use the HDF5. Now we assume the use of the intel compiller(`module load intel` has been already written in ``~/.basrhrc ). If you prefer to use another compiler, change the argument.
 
     
     tar xzvf hdf5-1.10.6.tar.gz
