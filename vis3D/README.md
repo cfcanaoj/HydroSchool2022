@@ -34,20 +34,19 @@ You can find the data in `hdfdata`.
 ## Visualization
 
 ## Preparation
-Abobe, you used a library in `~/hydro17/hdf5`. After the school you cannot use it. You need to install `hdf5` in your local dir. 
+Abobe, you used a library in `~/hydro17/hdf5`. After the school you cannot use it. You need to install `hdf5` in your home directory in analysis server. 
 
 Download `hdf5-1.10.6.tar.gz` from the following URL: https://www.hdfgroup.org/downloads/hdf5/source-code/
-Here we use the old version of HDF5. Then put it in your home directory.
+Here we use the old version of HDF5. Then put it in your home directory. The follwing command enable you use the HDF5. Now we assume the use of the intel compiller(`module load intel` has been already written in ``~/.basrhrc ). If you prefer to use another compiler, change the argument.
 
     
     tar xzvf hdf5-1.10.6.tar.gz
     cd hdf5-1.10.6
-    module load intel
     ./configure --enable-fortran FC=ifort --prefix=/home/<your account>/hdf5
     make
     make install
      
-Finally  you have to add the follwoing command in your`~/.bashrc`.
+Finally you have to add the follwoing command in your`~/.bashrc`.
      
      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/<your account>/hdf5/lib
     
