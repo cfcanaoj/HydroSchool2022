@@ -39,8 +39,8 @@ Here we use the old version of HDF5. Then put it in your home directory.
     tar xzvf hdf5-1.10.6.tar.gz
     cd hdf5-1.10.6
     module load intel
-     ./configure --enable-fortran FC=ifort --prefix=/home/takiwkkz/hdf5
+     ./configure --enable-fortran FC=ifort --prefix=/home/<your account>/hdf5
      make
      make install
-     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/takiwkkz/hdf5/lib
+     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/<your account>/hdf5/lib
     
