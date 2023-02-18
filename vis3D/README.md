@@ -2,10 +2,11 @@
 
 [Go to top](../README.md)  
 
-## How to run
+This is the instruction for CfCA hydro school 2022. 
 
-### compile 
-This is the instruction for CfCA hydro school 2022. First login the analysis server.
+## Make HDF files and xdmf text
+
+To learn about VisIt and paraview, you need to make the data for it. First login the analysis server.
 
     ssh <your account>@an**.cfca.nao.ac.jp
     
@@ -21,4 +22,12 @@ To run the code, you need to compile `main.f90`.
     make makedata.x
     
 Then `makedata.x`is made in this directory.
+    
+    ./makedata.x
+    
+You can find the data in `hdfdata`.
 
+## Visualization
+
+## Preparation
+Abobe, you used a library in `~/hydro17/hdf5`. After the school you cannot use it. You need to install `hdf5` in your local dir. 
