@@ -2,13 +2,18 @@
 
 [Go to top](../README.md)  
 
-This is the instruction for CfCA hydro school 2022. 
+This document is used for CfCA hydro school 2022. 
 
 ## Make HDF files and xdmf text
 
 To learn about VisIt and paraview, you need to make the data for it. First login the analysis server.
 
     ssh <your account>@an**.cfca.nao.ac.jp
+    
+To treat HDF5 format, you need library. Add the follwoing command in your`~/.bashrc`.
+    
+    module load intel
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/hydro17/hdf5/lib
     
 Then copy the source code if you have not copy it yet.
 
@@ -17,8 +22,6 @@ Then copy the source code if you have not copy it yet.
 To run the code, you need to compile `main.f90`.
     
     cd HydroSchool2022/vis3D
-    module load intel
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/takiwkkz/hdf5/lib
     make makedata.x
     
 Then `makedata.x`is made in this directory.
@@ -39,8 +42,11 @@ Here we use the old version of HDF5. Then put it in your home directory.
     tar xzvf hdf5-1.10.6.tar.gz
     cd hdf5-1.10.6
     module load intel
-     ./configure --enable-fortran FC=ifort --prefix=/home/<your account>/hdf5
-     make
-     make install
+    ./configure --enable-fortran FC=ifort --prefix=/home/<your account>/hdf5
+    make
+    make install
+     
+Finally  you have to add the follwoing command in your`~/.bashrc`.
+     
      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/<your account>/hdf5/lib
     
