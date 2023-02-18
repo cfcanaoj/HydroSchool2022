@@ -42,4 +42,5 @@ Here we use the old version of HDF5. Then put it in your home directory.
      ./configure --enable-fortran FC=ifort --prefix=/home/takiwkkz/hdf5
      make
      make install
+     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/takiwkkz/hdf5/lib
     
