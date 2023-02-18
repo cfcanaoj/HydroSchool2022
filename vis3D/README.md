@@ -10,7 +10,7 @@ To learn about VisIt and paraview, you need to make the data for it. First login
 
     ssh <your account>@an**.cfca.nao.ac.jp
     
-To treat HDF5 format, you need library. Add the follwoing command in your`~/.bashrc`.
+To treat HDF5 format, you need library. Add the follwoing command in your`~/.bashrc`. You can find sample `.bash_profile` and `.bashrc` in `/home/skel/`. (`tty erase '^H'` in `.basrhrc` may make a trouble. Then delete the line.)
     
     module load intel
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/hydro17/hdf5/lib
