@@ -31,3 +31,15 @@ You can find the data in `hdfdata`.
 
 ## Preparation
 Abobe, you used a library in `~/hydro17/hdf5`. After the school you cannot use it. You need to install `hdf5` in your local dir. 
+
+Download `hdf5-1.10.6.tar.gz` from the following URL: https://www.hdfgroup.org/downloads/hdf5/source-code/
+Here we use the old version of HDF5. Then put it in your home directory.
+
+    
+    tar xzvf hdf5-1.10.6.tar.gz
+    cd hdf5-1.10.6
+    module load intel
+     ./configure --enable-fortran FC=ifort --prefix=/home/takiwkkz/hdf5
+     make
+     make install
+    
