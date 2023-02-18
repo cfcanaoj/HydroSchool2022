@@ -31,6 +31,10 @@ Then `makedata.x`is made in this directory.
     
 You can find the data in `hdfdata`.
 
+## details of xdmf
+See the links.
+- https://qiita.com/hsimyu/items/6e163428477d19429576
+
 ## Visualization
 
 ## Preparation
