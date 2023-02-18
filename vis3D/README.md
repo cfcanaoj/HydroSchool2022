@@ -14,6 +14,7 @@ To treat HDF5 format, you need library. Add the follwoing command in your`~/.bas
     
     module load intel
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/hydro17/hdf5/lib
+    module load visit
     
 Then copy the source code if you have not copy it yet.
 
