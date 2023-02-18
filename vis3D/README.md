@@ -17,6 +17,7 @@ To run the code, you need to compile `main.f90`.
     
     cd HydroSchool2022/vis3D
     module load intel
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/takiwkkz/hdf5/lib
     make makedata.x
     
 Then `makedata.x`is made in this directory.
