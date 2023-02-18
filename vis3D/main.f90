@@ -103,7 +103,13 @@ subroutine GenerateProblem
   do j=js,je
   do i=is,ie
      r = sqrt(xv(i)**2 +yv(j)**2 +zv(k)**2) 
-     if( r .le. 0.1) then
+     if( r .le. 0.05) then
+        Q(i,j,k,IDN) = 2
+        Q(i,j,k,IPR) = 4
+        Q(i,j,k,IVX) = 0.0d0
+        Q(i,j,k,IVY) = 0.0d0
+        Q(i,j,k,IVZ) = 0.0d0
+     else if( r .le. 0.1) then
         Q(i,j,k,IDN) = 1
         Q(i,j,k,IPR) = 2
         Q(i,j,k,IVX) = 0.0d0
@@ -228,7 +234,13 @@ subroutine UpdatePrim
   do j=js,je
   do i=is,ie
      r = sqrt((xf(i)-xc)**2 +(yf(j)-yc)**2 +(zf(k)-zc)**2) 
-     if( r .le. 0.1) then
+     if( r .le. 0.05) then
+        Q(i,j,k,IDN) = 2
+        Q(i,j,k,IPR) = 4
+        Q(i,j,k,IVX) = 0.0d0
+        Q(i,j,k,IVY) = 0.0d0
+        Q(i,j,k,IVZ) = 0.0d0
+     else if( r .le. 0.1) then
         Q(i,j,k,IDN) = 1
         Q(i,j,k,IPR) = 2
         Q(i,j,k,IVX) = 0.0d0
