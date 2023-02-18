@@ -10,7 +10,7 @@ xydata
 epsfile
 output
 
-vis3D/
+vis3D/hdfdata
 
 # Compiled object files
 *.o
