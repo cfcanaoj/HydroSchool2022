@@ -40,10 +40,10 @@ character(20),parameter::dirname="lax" ! directory name
 ! snapshot
 integer, parameter :: unitsnap = 17
 
-! realtime
+! realtime analysis 
 integer, parameter :: unitevo = 11
 integer, parameter :: nevo = 3    ! the number of variables derived in the realtime analysis
-real(8) ::      phys_evo(nevo)    ! variables derived in the realtime analysis
+real(8) ::  phys_evo(nevo)    ! variables derived in the realtime analysis
 
      ! make the directory for output
      call makedirs(trim(dirname))
@@ -55,10 +55,11 @@ real(8) ::      phys_evo(nevo)    ! variables derived in the realtime analysis
       call Output( .TRUE., dirname, xf, xv, Q )
 
       write(6,*) "Start the simulation"
+      !open file to output the result of the realtime analysis
       open(unitevo,file=trim(dirname)//'/'//'ana.dat', action="write")
 ! main loop
       do 
-         call TimestepControl(xf, Q)
+         dt = TimestepControl(xf, Q)
          if( time + dt > timemax ) dt = timemax - time
          call BoundaryCondition(Q)
          call NumericalFlux(Q, F)
@@ -80,7 +81,9 @@ real(8) ::      phys_evo(nevo)    ! variables derived in the realtime analysis
 contains
 
 !-------------------------------------------------------------------
-!       generate grid 
+!       Generate coordiantes
+!       xf --> cell boundary xf(i) <==> x_{i-1/2}
+!       xv --> cell center   xv(i) <==> x_{i}
 !-------------------------------------------------------------------
 subroutine GenerateGrid(xf, xv)
 implicit none
@@ -99,7 +102,7 @@ integer::i
 return
 end subroutine GenerateGrid
 !-------------------------------------------------------------------
-!       generate initial condition 
+!       Generate initial condition of the primitive variables
 !-------------------------------------------------------------------
 subroutine GenerateProblem(xv, Q)
 implicit none
@@ -116,7 +119,7 @@ real(8), intent(out) :: Q(:,:)
 return
 end subroutine GenerateProblem
 !-------------------------------------------------------------------
-!       Boundary Condition 
+!       Boundary Condition of the primitive variables
 !-------------------------------------------------------------------
 subroutine BoundaryCondition(Q)
 implicit none
@@ -175,8 +178,10 @@ integer::i
 
 return
 end subroutine Consv2Prim
-
-subroutine TimestepControl(xf, Q)
+!-------------------------------------------------------------------
+!       determine dt 
+!-------------------------------------------------------------------
+Real(8) Function TimestepControl(xf, Q) 
 implicit none
 real(8), intent(in) :: xf(:), Q(:,:)
 real(8)::dtl1
@@ -191,10 +196,10 @@ integer::i
          if(dtlocal .lt. dtmin) dtmin = dtlocal
     enddo
 
-    dt = 0.3d0 * dtmin
+    TimestepControl = 0.3d0 * dtmin
 
 return
-end subroutine TimestepControl
+end function TimestepControl
 !-------------------------------------------------------------------
 !       Calculate the Numerical Flux at the cell surface from the primitive variables
 !       Input  : Q
@@ -215,9 +220,8 @@ real(8) :: ddmon, dvmon, dpmon
         Qr(i  ,:) = Q(i,:) 
     enddo
 
-!         call HLLE(leftst,rigtst,nflux)
     do i=is,ie+1
-        call Lax((xf(i) - xf(i-1))/dt,Ql(i,:),Qr(i,:),flx)
+        call Lax((xv(i) - xv(i-1))/dt,Ql(i,:),Qr(i,:),flx)
         F(i,:)  = flx(:)
     enddo
 
@@ -266,8 +270,9 @@ real(8):: sl, sr
 
 return
 end subroutine Lax
-!
-!
+!-------------------------------------------------------------------
+!       Update consevative variables U using numerical flux F
+!-------------------------------------------------------------------
 subroutine UpdateConsv( F, U )
 implicit none
 real(8), intent(in)  :: F(:,:)
@@ -284,7 +289,7 @@ return
 end subroutine UpdateConsv
 !-------------------------------------------------------------------
 !       Output snapshot files 
-!       Input  : flag, xf, xv, Q
+!       Input  : flag, dirname, xf, xv, Q
 !
 !       flag = .true.  --> output snapshot when calling this subroutine
 !       flag = .false. --> output snapshot every dtsnap
@@ -361,7 +366,6 @@ end subroutine
 !       create directory
 !       Input  : the directory to be created
 !-------------------------------------------------------------------
-
 subroutine makedirs(outdir)
 implicit none
 character(len=*), intent(in) :: outdir
