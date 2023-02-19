@@ -30,3 +30,4 @@ a.out
 # editor temp files
 *~
 *.swp
+ffmpeg*
