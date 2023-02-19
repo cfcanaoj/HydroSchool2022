@@ -4,7 +4,7 @@ implicit none
 ! time evolution
 integer :: ntime = 0    ! counter of the timestep
 real(8) :: time = 0.0d0  ! time 
-real(8) :: dt   = 0.0d0  ! time width
+real(8) :: dt = 0.0d0  ! time width
 real(8),parameter:: timemax=0.1d0 ! simulation end time
 
 integer,parameter::nx=256*1       ! the number of grids in the simulation box
@@ -41,7 +41,7 @@ real(8),parameter::gam=5.0d0/3.0d0
 real(8),dimension(nxtot)::xf,xv
 real(8),dimension(nxtot,NVAR) :: U
 real(8),dimension(nxtot,NVAR) :: Q
-real(8),dimension(nxtot,NFLX) :: flux
+real(8),dimension(nxtot,NFLX) :: F
 
 ! output 
 character(20),parameter::dirname="lax" ! directory name
@@ -71,8 +71,8 @@ real(8) ::  phys_evo(nevo)    ! variables derived in the realtime analysis
          dt = TimestepControl(xf, Q)
          if( time + dt > timemax ) dt = timemax - time
          call BoundaryCondition( Q)
-         call NumericalFlux( Q, flux )
-         call UpdateConsv( dt, xf, flux, U)
+         call NumericalFlux( Q, F )
+         call UpdateConsv( dt, xf, F, U)
          call Consv2Prim( U, Q )
          time=time+dt
          print*,"time = ",time, "dt = ",dt
@@ -242,7 +242,7 @@ integer::i
          if(dtlocal .lt. dtmin) dtmin = dtlocal
     enddo
 
-      dt = 0.1d0 * dtmin
+    TimestepControl = 0.1d0 * dtmin
 
 return
 end function TimestepControl
@@ -257,10 +257,10 @@ end function TimestepControl
 !
 !     Output: flux : the numerical flux estimated at the cell boundary
 !---------------------------------------------------------------------
-subroutine NumericalFlux( Q, flux )
+subroutine NumericalFlux( Q, F)
 implicit none
 real(8), intent(in) :: Q(:,:)
-real(8), intent(out) :: flux(:,:)
+real(8), intent(out) :: F(:,:)
 real(8),dimension(nxtot,NFLX):: Ql,Qr
 real(8),dimension(NFLX):: flx
 integer::i,ihy
@@ -278,12 +278,12 @@ real(8) :: dQm, dQp, dQ
 
       do i=is,ie+1
          call Lax((xv(i) - xv(i-1))/dt,Ql(i,:),Qr(i,:),flx(:))
-         flux(i,:)  = flx(:)
+         F(i,:)  = flx(:)
       enddo
 
 
-      return
-      end subroutine Numericalflux
+return
+end subroutine Numericalflux
 
 !-------------------------------------------------------------------
 !       The Lax Flux derived from the left and right quantities
@@ -369,23 +369,20 @@ real(8):: pbl, pbr, ptotl, ptotr
 integer :: i, n
 
 
-
-
 return
 end subroutine HLL
-
 !-------------------------------------------------------------------
 !       Update consevative variables U using numerical flux F
 !-------------------------------------------------------------------
-subroutine UpdateConsv( dt, xf, flux, U )
+subroutine UpdateConsv( dt, xf, F, U )
 implicit none
-real(8), intent(in)  :: flux(:,:), dt, xf(:)
+real(8), intent(in)  :: F(:,:), dt, xf(:)
 real(8), intent(out) :: U(:,:)
 integer::i,n
 
       do n=1,NVAR
       do i=is,ie
-         U(i,n) = U(i,n) + dt*(- flux(i+1,n) + flux(i,n))/(xf(i+1)-xf(i)) 
+         U(i,n) = U(i,n) + dt*(- F(i+1,n) + F(i,n))/(xf(i+1)-xf(i)) 
       enddo
       enddo
 

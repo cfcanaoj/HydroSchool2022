@@ -248,8 +248,7 @@ integer::i
          if(dtlocal .lt. dtmin) dtmin = dtlocal
     enddo
 
-      dt = 0.1d0 * dtmin
-!      write(6,*)"dt",dt
+      TimestepControl = 0.1d0 * dtmin
 return
 end function TimestepControl
 
@@ -290,8 +289,8 @@ real(8) :: dQm, dQp, dQ
       enddo
 
       do i=is,ie+1
-         call Lax((xv(i) - xv(i-1))/dt,Ql(i,:),Qr(i,:),flx(:))
-!         call HLL(Ql(i,:),Qr(i,:),flx)
+!         call Lax((xv(i) - xv(i-1))/dt,Ql(i,:),Qr(i,:),flx(:))
+         call HLL(Ql(i,:),Qr(i,:),flx)
 !         call HLLD(Ql(i,:),Qr(i,:),flx)
          flux(i,:)  = flx(:)
       enddo
