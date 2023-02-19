@@ -10,6 +10,8 @@ xydata
 epsfile
 output
 
+vis3D/hdfdata
+
 # Compiled object files
 *.o
 *.mod
