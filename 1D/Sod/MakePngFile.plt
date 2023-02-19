@@ -1,5 +1,4 @@
 set terminal push
-#set terminal pngcairo enhanced
 set terminal png
 
 set xlabel "x"
@@ -7,8 +6,8 @@ set xlabel "x"
 set yrange [0.0:1.2]
 set xrange [-0.5:0.5]
 
-inpfile=sprintf("snap/t%05d.dat",num)
-outfile=sprintf("snap/den%05d.png",num)
+inpfile=sprintf("lax/snap%05d.dat",num)
+outfile=sprintf("lax/den%05d.png",num)
 
 # extract time from the first line
 command=sprintf("awk 'NR==1{print($2)}' %s", inpfile)

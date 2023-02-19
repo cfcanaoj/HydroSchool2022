@@ -260,7 +260,6 @@ real(8) :: ddmon, dvmon, dpmon
 
     do i=is,ie+1
           call Lax((xf(i) - xf(i-1))/dt,Ql(i,:),Qr(i,:),flx)
-!        call HLL(Ql(i,:),Qr(i,:),flx)
         F(i,:)  = flx(:)
     enddo
 
@@ -502,6 +501,8 @@ data is_inited /.false./
          write(unitsnap,*) xv(i), Q(i,IDN), Q(i,IVX), Q(i,IPR)
     enddo
     close(unitsnap)
+
+    write(6,*) "output:",nout,time
 
     nout=nout+1
     tout=tout + dtout

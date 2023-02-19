@@ -112,7 +112,7 @@ end module eosmod
       implicit none
       integer::i,j,k
       real(8)::pi
-      real(8),parameter::k_ini=10.0d0
+      real(8),parameter::k_ini=5.0d0
 
       real(8),dimension(in,jn,kn)::vpsi1b,vpsi2b
       real(8):: psinorm
@@ -168,9 +168,12 @@ end module eosmod
          v1(i,j,k) = v1(i,j,k) *(1.0d0+eps*(x-0.5d0))
          call random_number(x)
          v2(i,j,k) = v2(i,j,k) *(1.0d0+eps*(x-0.5d0))
+!         print*,x1b(i),x2b(j),v1(i,j,k),v2(i,j,k)
       enddo
       enddo
       enddo
+
+      print*, sqrt(sum(v1(is:ie,js:je,ks)**2 + v2(is:ie,js:je,ks)**2)/(ie-is+1)/(je-js+1))
 
 
       do k=ks,ke
@@ -942,7 +945,7 @@ end module eosmod
 
       write(filename,'(a3,i5.5,a4)')"bin",nout,".dat"
       filename = trim(dirname)//filename
-      open(unitbin,file=filename,status='replace',form='binary') 
+      open(unitbin,file=filename,status='replace',form='unformatted') 
       write(unitbin) x1out(:,:)
       write(unitbin) x2out(:,:)
       write(unitbin) hydout(:,:,:,:)

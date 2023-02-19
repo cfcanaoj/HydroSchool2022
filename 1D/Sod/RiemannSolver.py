@@ -46,10 +46,8 @@ def main():
     im3 = ax1.plot(x,pre,'-',color='blue',linewidth=4,label=r"$P$")
 
     for i in range(len(x)):
-        print x[i], rho[i], vel[i], pre[i]
+        print(x[i], rho[i], vel[i], pre[i])
 
-#    figA.savefig('riemann_sol.png')
-#    Image(filename='riemann_sol.png')
 
 def ExactRiemanSolver(gam, rhoL, velL, preL, rhoR, velR, preR ):
     gamp1 = gam + 1.0

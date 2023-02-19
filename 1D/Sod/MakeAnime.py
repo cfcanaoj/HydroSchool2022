@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import ArtistAnimation
@@ -9,8 +10,8 @@ plt.rcParams['pdf.use14corefonts'] = True
 plt.rcParams['text.usetex'] = True
 plt.rcParams['font.size'] = 20
 
-dirname = "snap"
-basename = "sod_lax"
+dirname = "lax"
+nmax = 40
 
 
 x = np.linspace(0, np.pi * 4, 100)
@@ -40,9 +41,8 @@ pre_ana = anasol[:,3]
 
 # フレームごとの Artist を作成する。
 icount = 0
-for istep in range(0,40+1):
-#for istep in range(40,40+1):
-    foutname = dirname + "/" + basename + "%05d.dat"%(istep)
+for istep in range(0,nmax+1):
+    foutname = dirname + "/snap" + "%05d.dat"%(istep)
     print("reading " + foutname)
     with open(foutname, 'r') as data_file: 
         line = data_file.readline() 
@@ -79,6 +79,6 @@ for istep in range(0,40+1):
 ani = ArtistAnimation(fig, frames, interval=50)
 
 # mp4 画像として保存する。
-ani.save(dirname + '/' + basename + ".mp4", writer="imagemagick")
+ani.save(dirname + "/pyanime.mp4", writer="imagemagick")
 plt.show()
 #plt.close()
