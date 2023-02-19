@@ -19,7 +19,7 @@ set terminal png
 
 set xlabel "x"
 
-#set yrange [-1.1e-5:1.1e-5]
+set yrange [-1.1e-5:1.1e-5]
 set xrange [-0.5:0.5]
 
 inpfile=sprintf("$dir/snap%05d.dat",$n)

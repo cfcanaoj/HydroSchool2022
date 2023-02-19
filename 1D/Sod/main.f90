@@ -13,7 +13,7 @@ integer, parameter :: ngh = 2            ! the number of ghost cells
 integer, parameter :: nxtot = nx+2*ngh+1 ! the total number of grids including ghost cells
 integer, parameter :: is = ngh+1         ! the index of the leftmost grid
 integer, parameter :: ie = nx+ngh     ! the index of the rightmost grid
-real(8), parameter :: x1min = -0.5d0, x1max = 0.5d0
+real(8), parameter :: xmin = -0.5d0, xmax = 0.5d0
 
 ! indices of the primitive variables
 integer, parameter :: IDN = 1
@@ -63,7 +63,7 @@ real(8) ::  phys_evo(nevo)    ! variables derived in the realtime analysis
          if( time + dt > timemax ) dt = timemax - time
          call BoundaryCondition(Q)
          call NumericalFlux(Q, F)
-         call UpdateConsv( F, U )
+         call UpdateConsv( dt, xf, F, U )
          call Consv2Prim( U, Q )
          time=time+dt
          call Output( .FALSE., dirname, xf, xv, Q )
@@ -76,6 +76,7 @@ real(8) ::  phys_evo(nevo)    ! variables derived in the realtime analysis
          if(time >= timemax) exit 
       enddo 
       call Output( .TRUE., dirname, xf, xv, Q )
+      call AnalysisAfterSimu(time,xf,xv,Q)
 
     write(6,*) "the simulation has been finished"
 contains
@@ -91,9 +92,9 @@ real(8), intent(out) :: xf(:), xv(:)
 real(8) :: dx,dy
 integer::i
 
-    dx=(x1max-x1min)/nx
+    dx=(xmax-xmin)/nx
     do i=1,nxtot
-         xf(i) = dx*(i-(ngh+1))+x1min
+         xf(i) = dx*(i-(ngh+1))+xmin
     enddo
     do i=1,nxtot-1
          xv(i) = 0.5d0*(xf(i+1)+xf(i))
@@ -209,19 +210,21 @@ subroutine NumericalFlux( Q, F )
 implicit none
 real(8), intent(in) :: Q(:,:)
 real(8), intent(out) :: F(:,:)
-integer::i
 real(8),dimension(nxtot,NVAR):: Ql,Qr
 real(8),dimension(NVAR):: flx
+integer :: i, ihy
 real(8) :: dQm(NVAR), dQp(NVAR), dQmon(NVAR)
 real(8) :: ddmon, dvmon, dpmon
 
+    do ihy=1,NVAR
     do i=is-1,ie+1
-        Ql(i+1,:) = Q(i,:) 
-        Qr(i  ,:) = Q(i,:) 
+        Ql(i+1,ihy) = Q(i,ihy) 
+        Qr(i  ,ihy) = Q(i,ihy) 
+    enddo
     enddo
 
     do i=is,ie+1
-        call Lax((xv(i) - xv(i-1))/dt,Ql(i,:),Qr(i,:),flx)
+        call Lax((xv(i) - xv(i-1))/dt,Ql(i,:),Qr(i,:),flx(:))
         F(i,:)  = flx(:)
     enddo
 
@@ -234,8 +237,8 @@ end subroutine Numericalflux
 !-------------------------------------------------------------------
 subroutine Lax(dxdt,Ql,Qr,flx)
 implicit none
-real(8),intent(in)::Ql(:), Qr(:)
-real(8),intent(in)::dxdt
+real(8),intent(in)  :: Ql(:), Qr(:)
+real(8),intent(in)  :: dxdt
 real(8),intent(out) :: flx(:)
 integer :: i, n
 real(8):: Ul(NVAR), Ur(NVAR)
@@ -260,8 +263,8 @@ real(8):: sl, sr
     Fl(IMX) = Ql(IPR) + Ql(IDN)*Ql(IVX)**2 
     Fr(IMX) = Qr(IPR) + Qr(IDN)*Qr(IVX)**2 
 
-    Fl(IEN) = ( gam*Ql(IPR)/(gam - 1.0d0) + 0.5d0*Ql(IDN)*Ql(IVX)**2)*Ql(IVX)
-    Fr(IEN) = ( gam*Qr(IPR)/(gam - 1.0d0) + 0.5d0*Qr(IDN)*Qr(IVX)**2)*Qr(IVX)
+    Fl(IEN) = ( gam*Ql(IPR)/(gam - 1.0d0) + 0.5d0*Ql(IDN)*Ql(IVX)**2 )*Ql(IVX)
+    Fr(IEN) = ( gam*Qr(IPR)/(gam - 1.0d0) + 0.5d0*Qr(IDN)*Qr(IVX)**2 )*Qr(IVX)
 
     do n=1,NVAR 
         flx(n)  = 0.5d0*(Fl(n) + Fr(n)) - 0.5d0*dxdt*(Ur(n) - Ul(n))
@@ -273,9 +276,10 @@ end subroutine Lax
 !-------------------------------------------------------------------
 !       Update consevative variables U using numerical flux F
 !-------------------------------------------------------------------
-subroutine UpdateConsv( F, U )
+subroutine UpdateConsv( dt, xf, F, U )
 implicit none
-real(8), intent(in)  :: F(:,:)
+real(8), intent(in)  :: F(:,:), xf(:)
+real(8), intent(in)  :: dt
 real(8), intent(out) :: U(:,:)
 integer::i,n
 
@@ -346,19 +350,19 @@ return
 end subroutine
 !-------------------------------------------------------------------
 !       Analysis after simulation
-!       Input  : xf, xv
-!       Output : phys_evo(nevo)
+!       Input  : xf, xv, Q
 !-------------------------------------------------------------------
 subroutine AnalysisAfterSimu(time,xf,xv,Q)
 real(8), intent(in)  :: xf(:), xv(:), Q(:,:)
 real(8), intent(in)  :: time
 integer :: i
-real(8) :: tmp
+real(8) :: error
 
-      tmp = 0.0d0
+      error = 0.0d0
       do i=is,ie
-           tmp = tmp + 1.0d0
+           error = error + 1.0d0
       enddo
+      print*, nx, error
       
 return
 end subroutine

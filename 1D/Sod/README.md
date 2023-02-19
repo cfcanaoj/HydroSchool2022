@@ -15,4 +15,3 @@
 * MakeAnime.sh
 
 * MakeAnim.py
-
