@@ -1,15 +1,16 @@
+import sys
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import ArtistAnimation
 from matplotlib import gridspec
 import re
 
-plt.rcParams['ps.useafm'] = True
-plt.rcParams['pdf.use14corefonts'] = True
-plt.rcParams['text.usetex'] = True
-plt.rcParams['font.size'] = 20
+gam = 5.0/3.0
+amp = 1e-5
 
-x = np.linspace(0, np.pi * 4, 100)
+dirname = sys.argv[1]
+nmin = int(sys.argv[2])
+nmax = int(sys.argv[3])
 
 fig = plt.figure(figsize=(8,10)) 
 gs = gridspec.GridSpec(3, 1, wspace=0.30,hspace=0.2) 
@@ -20,6 +21,7 @@ for i in range(3):
 ylabel = [r"$\rho$",r"$v$",r"$P$"]
 for i,ax0 in enumerate(ax):
     ax0.minorticks_on()
+    ax0.set_ylim(-1.1*amp,1.1*amp)
     ax0.set_xlim(-0.5,0.5)
     ax0.set_ylabel(ylabel[i])
 
@@ -27,17 +29,11 @@ ax[2].set_xlabel(r"$x$")
 
 frames = []  # 各フレームを構成する Artist 一覧
 
-anasol = np.loadtxt("sod_ana.dat")
-tout_ana = 0.2
-x_ana = anasol[:,0]
-den_ana = anasol[:,1]
-vel_ana = anasol[:,2]
-pre_ana = anasol[:,3]
 
 # フレームごとの Artist を作成する。
 icount = 0
-for istep in range(1,40+1):
-    foutname = "snap/t%05d.dat"%(istep)
+for istep in range(nmin,nmax+1):
+    foutname = dirname + "/snap%05d.dat"%(istep)
     print("reading " + foutname)
     with open(foutname, 'r') as data_file: 
         line = data_file.readline() 
@@ -52,14 +48,14 @@ for istep in range(1,40+1):
     pre = data[:,3]
 
     # グラフを作成する。
-    pg00, = ax[0].plot(x, den, 'o-',c="r",label="numerical")
-    pg01, = ax[0].plot(x_ana*time/tout_ana, den_ana, '-',c="b",label="exact")
+    pg00, = ax[0].plot(x, den-1.0, 'o-',c="r",label="numerical")
+    pg01, = ax[0].plot(x, 1e-5*np.sin(2.0*np.pi*(x-time)), '-',c="b",label="exact")
     pg10, = ax[1].plot(x, vel, 'o-',c="r",label="numerical")
-    pg11, = ax[1].plot(x_ana*time/tout_ana, vel_ana, '-',c="b",label="exact")
-    pg20, = ax[2].plot(x, pre, 'o-',c="r",label="numerical")
-    pg21, = ax[2].plot(x_ana*time/tout_ana, pre_ana, '-',c="b",label="exact")
+    pg11, = ax[1].plot(x, 1e-5*np.sin(2.0*np.pi*(x-time)), '-',c="b",label="exact")
+    pg20, = ax[2].plot(x, pre-1.0/gam, 'o-',c="r",label="numerical")
+    pg21, = ax[1].plot(x, 1e-5*np.sin(2.0*np.pi*(x-time)), '-',c="b",label="exact")
 
-    pg3 = ax[0].text(0,1.10,r"$\mathrm{time} = %.2f$"%(time),horizontalalignment="center")
+    pg3 = ax[0].text(0,amp*1.15,r"$\mathrm{time} = %.2f$"%(time),horizontalalignment="center")
 
     if icount == 0: 
         ax[0].legend()
