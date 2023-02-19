@@ -24,26 +24,8 @@ def main():
     velR = 0.0
     preR = 0.1
 
-#    rhoL = 1.0
-#    velL = 0.0
-#    preL = 1.0
-#
-#    rhoR = 0.125
-#    velR = 0.0
-#    preR = 0.1
-
     x, rho, vel, pre = ExactRiemanSolution(time, x0, gam, rhoL, velL, preL, rhoR, velR, preR)
 
-    figA = plt.figure(figsize=(8,6))
-    plt.rcParams['font.size']=20
-    artistA = []
-    ax1 = figA.add_subplot(1,1,1)
-
-    ax1.set_xlim(-0.5,0.5)
-    ax1.set_xlabel(r'$x$')
-    im1 = ax1.plot(x,rho,'-',color='red',linewidth=4,label=r"$\rho$")
-    im2 = ax1.plot(x,vel,'-',color='green',linewidth=4,label=r"$v$")
-    im3 = ax1.plot(x,pre,'-',color='blue',linewidth=4,label=r"$P$")
 
     for i in range(len(x)):
         print(x[i], rho[i], vel[i], pre[i])
@@ -178,33 +160,6 @@ def ExactRiemanSolution(time, x0, gam, rhoL, velL, preL, rhoR, velR, preR ):
 
     return x_riem, rho_riem, vel_riem, pre_riem
 
-
-def PreparationAnimation():
-    global figA, artistA, ax1
-    #set up for animation
-    figA = plt.figure(figsize=(8,6))
-    plt.rcParams['font.size']=20
-    artistA = []
-    ax1 = figA.add_subplot(1,1,1)
-
-    #set up for animation
-    figA = plt.figure(figsize=(8,6))
-    plt.rcParams['font.size']=20
-    artistA = []
-    ax1 = figA.add_subplot(1,1,1)
-
-def AddPictureToAnimation(time,x,rho,vel,pre): 
-    global ax1, artistA
-    ax1.set_xlim(-0.5,0.5)
-    ax1.set_xlabel(r'$x$')
-    im1 = ax1.plot(x,rho,'-',color='red',linewidth=4,label=r"$\rho$")
-    im2 = ax1.plot(x,vel,'-',color='green',linewidth=4,label=r"$v$")
-    im3 = ax1.plot(x,pre,'-',color='blue',linewidth=4,label=r"$P$")
-
-    ax1.legend(loc='upper right') 
-    
-    figA.tight_layout()
-    artistA.append(im1+im2+im3)
 
 if __name__ == "__main__":
     main()
