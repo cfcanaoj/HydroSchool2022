@@ -307,7 +307,7 @@ real(8), parameter:: dtsnap=5.0d-3
 integer::i
 character(40) :: filename
 real(8), save :: tsnap = - dtsnap
-integer :: nsnap = 0
+integer, save :: nsnap = 0
 
     if( .not.flag) then
           if( time + 1.0d-14.lt. tsnap+dtsnap) return
