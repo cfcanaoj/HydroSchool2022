@@ -45,8 +45,8 @@ integer, parameter :: unitevo = 11
 integer, parameter :: nevo = 3    ! the number of variables derived in the realtime analysis
 real(8) ::  phys_evo(nevo)    ! variables derived in the realtime analysis
 
-     ! make the directory for output
-     call makedirs(trim(dirname))
+      ! make the directory for output
+      call makedirs(trim(dirname))
 
       write(6,*) "setup grids and initial condition"
       call GenerateGrid(xf, xv)
@@ -66,6 +66,7 @@ real(8) ::  phys_evo(nevo)    ! variables derived in the realtime analysis
          call UpdateConsv( dt, xf, F, U )
          call Consv2Prim( U, Q )
          time=time+dt
+         print*,"time = ",time, "dt = ",dt
          call Output( .FALSE., dirname, xf, xv, Q )
 
          if( mod(ntime,10) .eq. 0 ) then

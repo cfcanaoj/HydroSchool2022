@@ -76,7 +76,6 @@ integer :: i,j,k
 !    call Output( .TRUE., xf, xv, yf, yv, Q, Bc )
 
 
-
     open(1,file="vy_evo_B0.8_ct_hll1.dat",action="write")
 ! main loop
     mloop: do 

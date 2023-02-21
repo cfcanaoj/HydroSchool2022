@@ -12,8 +12,8 @@ real(8),parameter:: dtout=0.1d0
 integer, parameter :: flag_HDC = 1 ! 1 --> HDC on , 0 --> HDC off
 integer, parameter :: flag_flux = 3 ! 1 (HLL), 2 (HLLC), 3 (HLLD)
 
-integer,parameter::nx=128*1*4        ! the number of grids in the simulation box
-integer,parameter::ny=128*2*4 ! the number of grids in the simulation box
+integer,parameter::nx=128*1*1        ! the number of grids in the simulation box
+integer,parameter::ny=128*1*1 ! the number of grids in the simulation box
 integer,parameter::nz=1          ! the number of grids in the simulation box
 integer,parameter::mgn=2         ! the number of ghost cells
 integer,parameter::in=nx+2*mgn+1 ! the total number of grids including ghost cells
@@ -26,10 +26,11 @@ integer,parameter::ie=nx+mgn     ! the index of the rightmost grid
 integer,parameter::je=ny+mgn     ! the index of the rightmost grid
 integer,parameter::ke=1     ! the index of the rightmost grid
 real(8),parameter::x1min=-0.5d0,x1max=0.5d0
-real(8),parameter::x2min=-1.0d0,x2max=1.0d0
+!real(8),parameter::x2min=-1.0d0,x2max=1.0d0
+real(8),parameter::x2min=-0.5d0,x2max=0.5d0
 real(8),parameter::x3min=0.0d0,x3max=1.0d0
 
-real(8),parameter::Ccfl=0.5d0
+real(8),parameter::Ccfl=0.4d0
 real(8),parameter::gam=5.0d0/3.0d0 !! adiabatic index
 
 real(8) ch       ! advection speed of divergence B
@@ -82,13 +83,10 @@ real(8) :: stime, etime
       call GenerateProblem(xv, yv, zv, Q)
       call ConsvVariable(Q, U)
       call BoundaryCondition(xf,yf,Q)
-      call Output( .TRUE., xf, xv, yf, yv, Q )
-
-
-
+!      call Output( .TRUE., xf, xv, yf, yv, Q )
 
       open(unitevo,file="cpu4.dat",action="write")
-  stime = omp_get_wtime()
+!  stime = omp_get_wtime()
       ntime = 1
       mloop: do !ntime=1,ntimemax
          call TimestepControl(xf, yf, zf, Q)
@@ -109,24 +107,24 @@ real(8) :: stime, etime
 
          time=time+dt
          ntime = ntime+1
-         call Output( .FALSE., xf, xv, yf, yv, Q)
+!         call Output( .FALSE., xf, xv, yf, yv, Q)
 !         call Output( .true., xf, xv, yf, yv, Q)
 !
          print*, "ntime = ",ntime, "time = ",time, dt
 
-         if( mod(ntime,10) .eq. 0 ) then
-             call Analysis(xv,yv,Q,phys_evo)
-             write(unitevo,*) time, phys_evo(1:nevo)
-             call flush(unitevo)
-         endif
+!         if( mod(ntime,10) .eq. 0 ) then
+!             call Analysis(xv,yv,Q,phys_evo)
+!             write(unitevo,*) time, phys_evo(1:nevo)
+!             call flush(unitevo)
+!         endif
 !
          if(time >= timemax) exit mloop
-!         if(ntime.eq.100)exit
+         if(ntime.eq.100)exit
       enddo mloop
       close(unitevo)
 
-      print*,"time = ", omp_get_wtime() - stime, nx*ny*ntime/(omp_get_wtime() - stime)
-      call Output( .TRUE., xf, xv, yf, yv, Q)
+!      print*,"time = ", omp_get_wtime() - stime, nx*ny*ntime/(omp_get_wtime() - stime)
+!      call Output( .TRUE., xf, xv, yf, yv, Q)
 
 !!      write(6,*) "program has been finished"
 contains
