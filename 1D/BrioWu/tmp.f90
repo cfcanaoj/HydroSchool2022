@@ -254,27 +254,6 @@ return
 end function TimestepControl
 
 !---------------------------------------------------------------------
-!     van Leer monotonicity limiter 
-!---------------------------------------------------------------------
-      subroutine vanLeer(n,dvp,dvm,dv)
-      implicit none
-      real(8),intent(in)::dvp(:),dvm(:)
-      integer,intent(in) :: n
-      real(8),intent(out)::dv(:)
-      integer :: i
-
-      do i=1,n
-         if(dvp(i)*dvm(i) .gt. 0.0d0)then
-            dv(i) =2.0d0*dvp(i)*dvm(i)/(dvp(i)+dvm(i))
-         else
-            dv(i) = 0.0d0
-         endif
-      enddo
-
-      return
-      end subroutine vanLeer
-
-!---------------------------------------------------------------------
 !     NumericalFlux
 !---------------------------------------------------------------------
 !     computes the numerical flux at the cell boundary 
@@ -473,10 +452,10 @@ integer :: i, n
                      + dsqrt( (2.0d0*pbr - gam*Qr(IPR))**2 &
                      + 4.0d0*gam*Qr(IPR)*( Qr(IBY)**2 + Qr(IBZ)**2 ) ) )/Qr(IDN) )
 
-!   sl = min(Ql(IVX),Qr(IVX)) - max(cfl,cfr)
-!   sr = max(Ql(IVX),Qr(IVX)) + max(cfl,cfr)
-    sl = min(Ql(IVX) - cfl,Qr(IVX) - cfr)
-    sr = max(Ql(IVX) + cfl,Qr(IVX) + cfr)
+   sl = min(Ql(IVX),Qr(IVX)) - max(cfl,cfr)
+   sr = max(Ql(IVX),Qr(IVX)) + max(cfl,cfr)
+!    sl = min(Ql(IVX) - cfl,Qr(IVX) - cfr)
+!    sr = max(Ql(IVX) + cfl,Qr(IVX) + cfr)
 
 
     if( sl > 0.0d0 ) then
