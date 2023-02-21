@@ -76,7 +76,9 @@ end module eosmod
          call PrimVariable
          time=time+dt
          call Output
+         print*,time
          if(time > timemax) exit mloop
+         if( nhy .eq. 100 ) exit
       enddo mloop
 
       write(6,*) "program has been finished"
@@ -109,6 +111,7 @@ end module eosmod
 
       subroutine GenerateProblem
       use commons
+      use eosmod
       implicit none
       integer::i,j,k
       real(8) :: rho1,rho2,Lsm,u1,u2
@@ -914,7 +917,7 @@ end module eosmod
 
       write(filename,'(a3,i5.5,a4)')"bin",nout,".dat"
       filename = trim(dirname)//filename
-      open(unitbin,file=filename,status='replace',form='binary') 
+      open(unitbin,file=filename,status='replace',form='unformatted') 
       write(unitbin) x1out(:,:)
       write(unitbin) x2out(:,:)
       write(unitbin) hydout(:,:,:,:)
