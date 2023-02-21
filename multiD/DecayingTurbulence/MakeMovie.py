@@ -14,8 +14,8 @@ xmax =  0.5
 ymin = -0.5
 ymax =  0.5
 
-dirname = "snap"
-base = "dt"
+dirname = "hlld"
+base = "snap"
 suffix = ".dat"
 fname_anime = "animation.mp4"
 

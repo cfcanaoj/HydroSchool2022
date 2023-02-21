@@ -244,7 +244,8 @@ integer::i
          if(dtlocal .lt. dtmin) dtmin = dtlocal
     enddo
 
-      dt = 0.1d0 * dtmin
+      TimestepControl = 0.1d0 * dtmin
+
 !      write(6,*)"dt",dt
 return
 end function TimestepControl
@@ -301,8 +302,8 @@ real(8) :: dQm, dQp, dQ
             dQ = 0.0d0
          endif
 
-         Ql(i+1,ihy) = Q(i,ihy) + 0.5d0*dQ
-         Qr(i  ,ihy) = Q(i,ihy) - 0.5d0*dQ
+         Ql(i+1,ihy) = Q(i,ihy) !+ 0.5d0*dQ
+         Qr(i  ,ihy) = Q(i,ihy) !- 0.5d0*dQ
       enddo
       enddo
 

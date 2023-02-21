@@ -1,8 +1,13 @@
+import sys
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import re
+
+dirname = sys.argv[1]
+step_s = int(sys.argv[2])
+step_e = int(sys.argv[3])
 
 def makedirs(path):
     if not os.path.isdir(path):
@@ -19,16 +24,10 @@ xmax =  0.25
 ymin = -0.75
 ymax =  0.75
 
-dirname = "snap_B0.5_hdc"
-base = "rt"
-suffix = ".dat"
-
-step_s = 25
-step_e = 25
 
 graph_list = [] 
 for istep in range(step_s,step_e+1):
-    foutname = dirname + "/" + base + "%05d"%(istep) + suffix
+    foutname = dirname + "/snap%05d.dat"%(istep) 
     print("making plot ",foutname)
     with open(foutname, 'r') as data_file:
         line = data_file.readline();
@@ -61,8 +60,10 @@ for istep in range(step_s,step_e+1):
         plt.colorbar(im,orientation="vertical")
     graph_list.append([pg00,im])               
 
-    makedirs(dirname + "/pdffile")
-    plt.savefig(dirname + "/pdffile/rt%05d.pdf"%(istep),bbox_inches="tight", pat_inches=1.0,dpi=1000)
+#    makedirs(dirname + "/pdffile")
+#    plt.savefig(dirname + "/pdffile/rt%05d.pdf"%(istep),bbox_inches="tight", pat_inches=1.0,dpi=1000)
+    makedirs(dirname + "/pngfile")
+    plt.savefig(dirname + "/pngfile/rt%05d.png"%(istep),bbox_inches="tight", pat_inches=1.0,dpi=1000)
 
 #ani = animation.ArtistAnimation(fig, graph_list, interval=200) 
 #print("making animation file", fname_anime)

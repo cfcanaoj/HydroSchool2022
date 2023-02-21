@@ -1,5 +1,4 @@
 program main
-!$ use omp_lib
 implicit none
 
 integer::ntime = 0 ! counter of the timestep
@@ -10,8 +9,8 @@ real(8),parameter:: dtout=0.2d0
 
 integer, parameter :: flag_flux = 3 ! 1 (HLL), 2 (HLLC), 3 (HLLD)
 
-integer,parameter::nx=128*1*4 ! the number of grids in the simulation box
-integer,parameter::ny=128*2*4 ! the number of grids in the simulation box
+integer,parameter::nx=128*1*1 ! the number of grids in the simulation box
+integer,parameter::ny=128*2*1! the number of grids in the simulation box
 integer,parameter::nz=1          ! the number of grids in the simulation box
 integer,parameter::mgn=2         ! the number of ghost cells
 integer,parameter::nxtot=nx+2*mgn+1 ! the total number of grids including ghost cells
@@ -55,36 +54,29 @@ real(8) :: phys_evo(nevo)
 real(8),dimension(nxtot)::xf,xv
 real(8),dimension(nytot)::yf,yv
 real(8),dimension(nztot)::zf,zv
-real(8),dimension(nxtot,nytot,nztot,NVAR) :: Uo
-real(8),dimension(nxtot,nytot,nztot,NVAR) :: U
-real(8),dimension(nxtot,nytot,nztot,NVAR) :: Q
-real(8),dimension(nxtot,nytot,nztot,3) :: Bso 
-real(8),dimension(nxtot,nytot,nztot,3) :: Bs 
-real(8),dimension(nxtot,nytot,nztot,3) :: Bc
-real(8),dimension(nxtot,nytot,nztot,NVAR) :: F
-real(8),dimension(nxtot,nytot,nztot,NVAR) :: G
-real(8),dimension(nxtot,nytot,nztot,NVAR) :: H
-real(8),dimension(nxtot,nytot,nztot,3) :: E 
-real(8) :: dt, stime
+real(8),dimension(NVAR,nxtot,nytot,nztot) :: Uo
+real(8),dimension(NVAR,nxtot,nytot,nztot) :: U
+real(8),dimension(NVAR,nxtot,nytot,nztot) :: Q
+real(8),dimension(3,nxtot,nytot,nztot) :: Bso 
+real(8),dimension(3,nxtot,nytot,nztot) :: Bs 
+real(8),dimension(3,nxtot,nytot,nztot) :: Bc
+real(8),dimension(NVAR,nxtot,nytot,nztot) :: F
+real(8),dimension(NVAR,nxtot,nytot,nztot) :: G
+real(8),dimension(NVAR,nxtot,nytot,nztot) :: H
+real(8),dimension(3,nxtot,nytot,nztot) :: E 
+real(8) :: dt
 integer :: i,j,k
 
-
-!$omp parallel
-  print *, "Hello! N =", omp_get_num_threads(), " and I am ", omp_get_thread_num()
-!$omp end parallel
 
 !      write(6,*) "setup grids and initial condition"
     call GenerateGrid(xf, xv, yf, yv, zf, zv)
     call GenerateProblem(xv, yv, zv, Q, Bs, Bc)
     call ConsvVariable(Q, Bc, U)
     call BoundaryCondition( Q, Bs, Bc )
-    call Output( .TRUE., xf, xv, yf, yv, Q, Bc )
+!    call Output( .TRUE., xf, xv, yf, yv, Q, Bc )
 
 
-
-!    open(1,file="vy_evo_B0.8_ct_hll1.dat",action="write")
-    open(1,file="cpu1_ct.dat",action="write")
-  stime = omp_get_wtime()
+    open(1,file="test.dat",action="write")
 ! main loop
     mloop: do 
         call TimestepControl(xf, yf, zf, Q, Bc, dt)
@@ -112,16 +104,15 @@ integer :: i,j,k
              write(1,*) time, phys_evo(1:nevo)
              call flush(1)
          endif
-         call Output( .FALSE., xf, xv, yf, yv, Q, Bc)
+!         call Output( .FALSE., xf, xv, yf, yv, Q, Bc)
 !         call Output( .true., xf, xv, yf, yv, Q, Bc)
 
          print*, "time = ",time, "dt = ",dt
 
          if(time >= timemax) exit mloop
       enddo mloop
-      print*,"elapse time = ", omp_get_wtime() - stime, nx*ny*ntime/(omp_get_wtime() - stime)
       close(1)
-      call Output( .TRUE., xf, xv, yf, yv, Q, Bc)
+!      call Output( .TRUE., xf, xv, yf, yv, Q, Bc)
 
 
 !      write(6,*) "program has been finished"
@@ -134,7 +125,6 @@ contains
     real(8), intent(out) :: zf(:), zv(:)
     real(8) :: dx,dy
     integer::i,j
-
 
     dx=(x1max-x1min)/dble(nx)
     do i=1,nxtot
@@ -177,14 +167,14 @@ contains
     do k=ks,ke
     do j=js,je
     do i=is,ie
-        Q(i,j,k,IDN) = 1.0d0 !+ 0.5d0*( dtanh( (yv(j)+0.25d0)/wid ) - tanh( (yv(j)-0.25d0)/wid) )
-        Q(i,j,k,IVX)  = 0.5*dv*( dtanh( (yv(j)+0.5d0)/wid ) - dtanh( (yv(j) - 0.5d0)/wid ) - 1.0d0 )
-        Q(i,j,k,IVY)  = 0.001d0*dsin(2.0d0*pi*xv(i))* &
+        Q(IDN,i,j,k) = 1.0d0 !+ 0.5d0*( dtanh( (yv(j)+0.25d0)/wid ) - tanh( (yv(j)-0.25d0)/wid) )
+        Q(IVX,i,j,k)  = 0.5*dv*( dtanh( (yv(j)+0.5d0)/wid ) - dtanh( (yv(j) - 0.5d0)/wid ) - 1.0d0 )
+        Q(IVY,i,j,k)  = 0.001d0*dsin(2.0d0*pi*xv(i))* &
              ( dexp( - (yv(j) + 0.5d0)**2/sig**2 ) +  &
                dexp( - (yv(j) - 0.5d0)**2/sig**2 ) )
-        Q(i,j,k,IPR) = 1.0d0
+        Q(IPR,i,j,k) = 1.0d0
 
-        Q(i,j,k,ISC) = 0.5d0*( dtanh( (yv(j)+0.5d0)/wid ) - tanh( (yv(j)-0.5d0)/wid) )
+        Q(ISC,i,j,k) = 0.5d0*( dtanh( (yv(j)+0.5d0)/wid ) - tanh( (yv(j)-0.5d0)/wid) )
     enddo
     enddo
     enddo
@@ -192,7 +182,7 @@ contains
     do k=ks,ke
     do j=js,je
     do i=is,ie+1
-        Bs(i,j,k,1) = B0
+        Bs(1,i,j,k) = B0
     enddo
     enddo
     enddo
@@ -200,7 +190,7 @@ contains
     do k=ks,ke
     do j=js,je+1
     do i=is,ie
-        Bs(i,j,k,2) = 0.0d0
+        Bs(2,i,j,k) = 0.0d0
     enddo
     enddo
     enddo
@@ -208,7 +198,7 @@ contains
     do k=ks,ke+1
     do j=js,je
     do i=is,ie
-        Bs(i,j,k,3) = 0.0d0
+        Bs(3,i,j,k) = 0.0d0
     enddo
     enddo
     enddo
@@ -230,7 +220,7 @@ contains
     do k=ks,ke
     do j=js-mgn,je+mgn
     do i=1,mgn
-        Q(is-i,j,k,:)  = Q(ie+1-i,j,k,:)
+        Q(:,is-i,j,k)  = Q(:,ie+1-i,j,k)
     enddo
     enddo
     enddo
@@ -238,7 +228,7 @@ contains
     do k=ks,ke
     do j=js-mgn,je+mgn
     do i=1,mgn
-          Bs(is-i,j,k,1) = Bs(ie+1-i,j,k,1)
+          Bs(1,is-i,j,k) = Bs(1,ie+1-i,j,k)
     enddo
     enddo
     enddo
@@ -246,7 +236,7 @@ contains
     do k=ks,ke
     do j=js-mgn,je+mgn+1
     do i=1,mgn
-          Bs(is-i,j,k,2) = Bs(ie+1-i,j,k,2)
+          Bs(2,is-i,j,k) = Bs(2,ie+1-i,j,k)
     enddo
     enddo
     enddo
@@ -254,7 +244,7 @@ contains
     do k=ks,ke+1
     do j=js-mgn,je+mgn
     do i=1,mgn
-          Bs(is-i,j,k,3) = Bs(ie+1-i,j,k,3)
+          Bs(3,is-i,j,k) = Bs(3,ie+1-i,j,k)
     enddo
     enddo
     enddo
@@ -263,7 +253,7 @@ contains
     do k=ks,ke
     do j=js-mgn,je+mgn
     do i=1,mgn
-        Q(ie+i,j,k,:) = Q(is+i-1,j,k,:)
+        Q(:,ie+i,j,k) = Q(:,is+i-1,j,k)
     enddo
     enddo
     enddo
@@ -271,7 +261,7 @@ contains
     do k=ks,ke
     do j=js-mgn,je+mgn
     do i=1,mgn
-        Bs(ie+i+1,j,k,1) = Bs(is+i,j,k,1)
+        Bs(1,ie+i+1,j,k) = Bs(1,is+i,j,k)
     enddo
     enddo
     enddo
@@ -279,7 +269,7 @@ contains
     do k=ks,ke
     do j=js-mgn,je+mgn+1
     do i=1,mgn
-        Bs(ie+i,j,k,2) = Bs(is+i-1,j,k,2)
+        Bs(2,ie+i,j,k) = Bs(2,is+i-1,j,k)
     enddo
     enddo
     enddo
@@ -287,7 +277,7 @@ contains
     do k=ks,ke+1
     do j=js-mgn,je+mgn
     do i=1,mgn
-        Bs(ie+i,j,k,3) = Bs(is+i-1,j,k,3)
+        Bs(3,ie+i,j,k) = Bs(3,is+i-1,j,k)
     enddo
     enddo
     enddo
@@ -296,7 +286,7 @@ contains
     do k=ks,ke
     do j=1,mgn
     do i=is-mgn,ie+mgn
-        Q(i,js-j,k,:)  = Q(i,je+1-j,k,:)
+        Q(:,i,js-j,k)  = Q(:,i,je+1-j,k)
     enddo
     enddo
     enddo
@@ -304,7 +294,7 @@ contains
     do k=ks,ke
     do j=1,mgn
     do i=is-mgn,ie+mgn+1
-        Bs(i,js-j,k,1) = Bs(i,je+1-j,k,1)
+        Bs(1,i,js-j,k) = Bs(1,i,je+1-j,k)
     enddo
     enddo
     enddo
@@ -312,7 +302,7 @@ contains
     do k=ks,ke
     do j=1,mgn
     do i=is-mgn,ie+mgn
-        Bs(i,js-j,k,2) = Bs(i,je+1-j,k,2)
+        Bs(2,i,js-j,k) = Bs(2,i,je+1-j,k)
     enddo
     enddo
     enddo
@@ -321,7 +311,7 @@ contains
     do k=ks,ke+1
     do j=1,mgn
     do i=is-mgn,ie+mgn
-        Bs(i,js-j,k,3) = Bs(i,je+1-j,k,3)
+        Bs(3,i,js-j,k) = Bs(3,i,je+1-j,k)
     enddo
     enddo
     enddo
@@ -330,7 +320,7 @@ contains
     do k=ks,ke
     do j=1,mgn
     do i=is-mgn,ie+mgn
-       Q(i,je+j,k,:)  = Q(i,js+j-1,k,:)
+       Q(:,i,je+j,k)  = Q(:,i,js+j-1,k)
     enddo
     enddo
     enddo
@@ -338,7 +328,7 @@ contains
     do k=ks,ke
     do j=1,mgn
     do i=is-mgn,ie+mgn+1
-          Bs(i,je+j,k,1) = Bs(i,js+j-1,k,1)
+          Bs(1,i,je+j,k) = Bs(1,i,js+j-1,k)
     enddo
     enddo
     enddo
@@ -346,7 +336,7 @@ contains
     do k=ks,ke
     do j=1,mgn
     do i=is-mgn,ie+mgn
-        Bs(i,je+j+1,k,2) = Bs(i,js+j,k,2)
+        Bs(2,i,je+j+1,k) = Bs(2,i,js+j,k)
     enddo
     enddo
     enddo
@@ -354,7 +344,7 @@ contains
     do k=ks,ke+1
     do j=1,mgn
     do i=is-mgn,ie+mgn
-        Bs(i,je+j,k,3) = Bs(i,js+j-1,k,3)
+        Bs(3,i,je+j,k) = Bs(3,i,js+j-1,k)
     enddo
     enddo
     enddo
@@ -376,20 +366,18 @@ contains
     integer::i,j,k
 
         do k=ks,ke
-       !$omp parallel do private(i)
         do j=js,je
         do i=is,ie
-            U(i,j,k,IDN) = Q(i,j,k,IDN)
-            U(i,j,k,IM1) = Q(i,j,k,IDN)*Q(i,j,k,IVX)
-            U(i,j,k,IM2) = Q(i,j,k,IDN)*Q(i,j,k,IVY)
-            U(i,j,k,IM3) = Q(i,j,k,IDN)*Q(i,j,k,IVZ)
-            U(i,j,k,IEN) = 0.5d0*Q(i,j,k,IDN)*( Q(i,j,k,IVX)**2 + Q(i,j,k,IVY)**2 + Q(i,j,k,IVZ)**2 ) &
-                       + 0.5d0*( Bc(i,j,k,1)**2 + Bc(i,j,k,2)**2 + Bc(i,j,k,3)**2 ) &
-                       + Q(i,j,k,IPR)/(gam - 1.0d0)
-            U(i,j,k,ISC) = Q(i,j,k,IDN)*Q(i,j,k,ISC)
+            U(IDN,i,j,k) = Q(IDN,i,j,k)
+            U(IM1,i,j,k) = Q(IDN,i,j,k)*Q(IVX,i,j,k)
+            U(IM2,i,j,k) = Q(IDN,i,j,k)*Q(IVY,i,j,k)
+            U(IM3,i,j,k) = Q(IDN,i,j,k)*Q(IVZ,i,j,k)
+            U(IEN,i,j,k) = 0.5d0*Q(IDN,i,j,k)*( Q(IVX,i,j,k)**2 + Q(IVY,i,j,k)**2 + Q(IVZ,i,j,k)**2 ) &
+                       + 0.5d0*( Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 + Bc(3,i,j,k)**2 ) &
+                       + Q(IPR,i,j,k)/(gam - 1.0d0)
+            U(ISC,i,j,k) = Q(IDN,i,j,k)*Q(ISC,i,j,k)
         enddo
         enddo
-       !$omp end parallel do
         enddo
       
     return
@@ -405,21 +393,19 @@ contains
         call CellCenterMagneticField(is, ie, js, je, ks, ke, Bs, Bc)
 
         do k=ks,ke
-       !$omp parallel do private(i, inv_d)
         do j=js,je
         do i=is,ie
-            Q(i,j,k,IDN) = U(i,j,k,IDN)
-            inv_d = 1.0d0/U(i,j,k,IDN)
-            Q(i,j,k,IVX) = U(i,j,k,IM1)*inv_d
-            Q(i,j,k,IVY) = U(i,j,k,IM2)*inv_d
-            Q(i,j,k,IVZ) = U(i,j,k,IM3)*inv_d
-            Q(i,j,k,IPR) = ( U(i,j,k,IEN) &
-                        - 0.5d0*(U(i,j,k,IM1)**2 + U(i,j,k,IM2)**2 + U(i,j,k,IM3)**2)*inv_d  &
-                        - 0.5d0*(Bc(i,j,k,1)**2 + Bc(i,j,k,2)**2 + Bc(i,j,k,3)**2) )*(gam-1.0d0)
-            Q(i,j,k,ISC) = U(i,j,k,ISC)*inv_d
+            Q(IDN,i,j,k) = U(IDN,i,j,k)
+            inv_d = 1.0d0/U(IDN,i,j,k)
+            Q(IVX,i,j,k) = U(IM1,i,j,k)*inv_d
+            Q(IVY,i,j,k) = U(IM2,i,j,k)*inv_d
+            Q(IVZ,i,j,k) = U(IM3,i,j,k)*inv_d
+            Q(IPR,i,j,k) = ( U(IEN,i,j,k) &
+                        - 0.5d0*(U(IM1,i,j,k)**2 + U(IM2,i,j,k)**2 + U(IM3,i,j,k)**2)*inv_d  &
+                        - 0.5d0*(Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 + Bc(3,i,j,k)**2) )*(gam-1.0d0)
+            Q(ISC,i,j,k) = U(ISC,i,j,k)*inv_d
         enddo
         enddo
-        !$omp end parallel do
         enddo
 
     return
@@ -434,15 +420,13 @@ contains
     real(8) :: inv_d;
 
         do k=kbeg,kfin
-       !$omp parallel do private(i, inv_d)
         do j=jbeg,jfin
         do i=ibeg,ifin
-            Bc(i,j,k,1) = 0.5d0*( Bs(i+1,j,k,1) + Bs(i,j,k,1) )
-            Bc(i,j,k,2) = 0.5d0*( Bs(i,j+1,k,2) + Bs(i,j,k,2) )
-            Bc(i,j,k,3) = 0.5d0*( Bs(i,j,k+1,3) + Bs(i,j,k,3) )
+            Bc(1,i,j,k) = 0.5d0*( Bs(1,i+1,j,k) + Bs(1,i,j,k) )
+            Bc(2,i,j,k) = 0.5d0*( Bs(2,i,j+1,k) + Bs(2,i,j,k) )
+            Bc(3,i,j,k) = 0.5d0*( Bs(3,i,j,k+1) + Bs(3,i,j,k) )
         enddo
         enddo
-        !$omp end parallel do
         enddo
 
     return
@@ -459,19 +443,16 @@ contains
         dtmin=1.0d90
 
         do k=ks,ke
-     !$omp parallel do private(i,dtl1,dtl2,cf) reduction (min: dtmin)
         do j=js,je
         do i=is,ie
-            cf = dsqrt( (gam*Q(i,j,k,IPR) + Bc(i,j,k,1)**2 + Bc(i,j,k,2)**2 + Bc(i,j,k,3)**2)/Q(i,j,k,IDN))
+            cf = dsqrt( (gam*Q(IPR,i,j,k) + Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 + Bc(3,i,j,k)**2)/Q(IDN,i,j,k))
          
-            dtl1 =(xf(i+1)-xf(i))/(abs(Q(i,j,k,IVX)) + cf)
-            dtl2 =(yf(j+1)-yf(j))/(abs(Q(i,j,k,IVY)) + cf)
-!            dtlocal = min(dtl1,dtl2)
-!            if(dtlocal .lt. dtmin) dtmin = dtlocal
-            dtmin = min(dtl1,dtl2,dtmin)
+            dtl1 =(xf(i+1)-xf(i))/(abs(Q(IVX,i,j,k)) + cf)
+            dtl2 =(yf(j+1)-yf(j))/(abs(Q(IVY,i,j,k)) + cf)
+            dtlocal = min(dtl1,dtl2)
+            if(dtlocal .lt. dtmin) dtmin = dtlocal
         enddo
         enddo
-      !$omp end parallel do
         enddo
 
         dt1 = Ccfl* dtmin*2.0d0
@@ -523,7 +504,7 @@ contains
     real(8), intent(out) :: E(:,:,:,:)
     
     integer::i,j,k
-    real(8),dimension(nxtot,nytot,nztot,NFLX):: Ql,Qr
+    real(8),dimension(NFLX,nxtot,nytot,nztot):: Ql,Qr
     real(8),dimension(NFLX):: flx
     real(8) :: dQm(NVAR), dQp(NVAR), dQmon(NVAR)
     real(8) :: ddmon, dvmon, dpmon
@@ -533,161 +514,145 @@ contains
     real(8),dimension(nxtot,nytot,nztot) :: e1_yf, e3_yf
     real(8),dimension(nxtot,nytot,nztot) :: weight1, weight2, weight3
     real(8) :: wghtCT
-
-    stime = omp_get_wtime()
     
-!$omp parallel 
+    
     ! numerical flux in the x direction
     ! hydro part
         do k=ks,ke
-      !$omp do private( i, j, dQp, dQm, dQmon )
         do j=js-1,je+1
         do i=is-1,ie+1
-            dQp(1:NVAR) = Q(i+1,j,k,1:NVAR) - Q(i  ,j,k,1:NVAR)
-            dQm(1:NVAR) = Q(i  ,j,k,1:NVAR) - Q(i-1,j,k,1:NVAR)
+            dQp(1:NVAR) = Q(1:NVAR,i+1,j,k) - Q(1:NVAR,i  ,j,k)
+            dQm(1:NVAR) = Q(1:NVAR,i  ,j,k) - Q(1:NVAR,i-1,j,k)
     
             call vanLeer(NVAR, dQp, dQm, dQmon)
     
              ! Ql(i,j,k) --> W_(i-1/2,j,k)
              ! Qr(i,j,k) --> W_(i-1/2,j,k)
-            Ql(i+1,j,k,1:NVAR) = Q(i,j,k,1:NVAR) + 0.5d0*dQmon(1:NVAR)
-            Qr(i  ,j,k,1:NVAR) = Q(i,j,k,1:NVAR) - 0.5d0*dQmon(1:NVAR)
-
+            Ql(1:NVAR,i+1,j,k) = Q(1:NVAR,i,j,k) + 0.5d0*dQmon(1:NVAR)
+            Qr(1:NVAR,i  ,j,k) = Q(1:NVAR,i,j,k) - 0.5d0*dQmon(1:NVAR)
         enddo
         enddo
-      !$omp end do
         enddo
     
         ! B field part
         do k=ks,ke
-      !$omp do private( i, dQp, dQm, dQmon )
         do j=js-1,je+1
         do i=is-1,ie+1
-            dQp(1:3) = Bc(i+1,j,k,1:3) - Bc(i  ,j,k,1:3)
-            dQm(1:3) = Bc(i  ,j,k,1:3) - Bc(i-1,j,k,1:3)
+            dQp(1:3) = Bc(1:3,i+1,j,k) - Bc(1:3,i  ,j,k)
+            dQm(1:3) = Bc(1:3,i  ,j,k) - Bc(1:3,i-1,j,k)
     
             call vanLeer(3, dQp, dQm, dQmon)
     
              ! Ql(i,j,k) --> W_(i-1/2,j,k)
              ! Qr(i,j,k) --> W_(i-1/2,j,k)
-            Ql(i+1,j,k,NVAR+1:NFLX) = Bc(i,j,k,1:3) + 0.5d0*dQmon(1:3)
-            Qr(i  ,j,k,NVAR+1:NFLX) = Bc(i,j,k,1:3) - 0.5d0*dQmon(1:3)
+            Ql(NVAR+1:NFLX,i+1,j,k) = Bc(1:3,i,j,k) + 0.5d0*dQmon(1:3)
+            Qr(NVAR+1:NFLX,i  ,j,k) = Bc(1:3,i,j,k) - 0.5d0*dQmon(1:3)
         enddo
         enddo
-      !$omp end do
         enddo
     
         if (flag_flux == 1 ) then
             do k=ks,ke
-           !$omp do private( i, flx, wghtCT )
             do j=js-1,je+1
             do i=is,ie+1
-                call HLL(1,Ql(i,j,k,:),Qr(i,j,k,:),Bs(i,j,k,1),xf(i+1)-xf(i),flx,wghtCT)
+                call HLL(1,Ql(:,i,j,k),Qr(:,i,j,k),Bs(1,i,j,k),xf(i+1)-xf(i),flx,wghtCT)
                  if (flx(IDN) >= 0.0) then 
-                     flx(ISC) = flx(IDN)*Ql(i,j,k,ISC);
+                     flx(ISC) = flx(IDN)*Ql(ISC,i,j,k);
                  else 
-                     flx(ISC) = flx(IDN)*Qr(i,j,k,ISC);
+                     flx(ISC) = flx(IDN)*Qr(ISC,i,j,k);
                  endif
         
-                 F(i,j,k,1:NVAR)  = flx(1:NVAR)
+                 F(1:NVAR,i,j,k)  = flx(1:NVAR)
                  e3_xf(i,j,k) =  -flx(IB2)
                  e2_xf(i,j,k) =  +flx(IB3)
         
                  if (flx(IDN) >= 0.0) then 
-                     flx(ISC) = flx(IDN)*Ql(i,j,k,ISC);
+                     flx(ISC) = flx(IDN)*Ql(ISC,i,j,k);
                  else 
-                     flx(ISC) = flx(IDN)*Qr(i,j,k,ISC);
+                     flx(ISC) = flx(IDN)*Qr(ISC,i,j,k);
                  endif
 
 !                 if(flx(IDN).ne.flx(IDN)) then
-!                     print*,i,j,k,flx(IDN),Ql(i,j,k,IDN),Qr(i,j,k,IDN)
+!                     print*,i,j,k,flx(IDN),Ql(IDN,i,j,k),Qr(IDN,i,j,k)
 !                 endif
         
                  weight1(i,j,k) = wghtCT
             enddo
             enddo
-          !$omp end do
             enddo
         else if (flag_flux == 3 ) then
             do k=ks,ke
-           !$omp do private( i, flx, wghtCT )
             do j=js-1,je+1
             do i=is,ie+1
-                call HLLD(1,Ql(i,j,k,:),Qr(i,j,k,:),Bs(i,j,k,1),xf(i+1)-xf(i),flx,wghtCT)
+                call HLLD(1,Ql(:,i,j,k),Qr(:,i,j,k),Bs(1,i,j,k),xf(i+1)-xf(i),flx,wghtCT)
                  if (flx(IDN) >= 0.0) then 
-                     flx(ISC) = flx(IDN)*Ql(i,j,k,ISC);
+                     flx(ISC) = flx(IDN)*Ql(ISC,i,j,k);
                  else 
-                     flx(ISC) = flx(IDN)*Qr(i,j,k,ISC);
+                     flx(ISC) = flx(IDN)*Qr(ISC,i,j,k);
                  endif
         
-                 F(i,j,k,1:NVAR)  = flx(1:NVAR)
+                 F(1:NVAR,i,j,k)  = flx(1:NVAR)
                  e3_xf(i,j,k) =  -flx(IB2)
                  e2_xf(i,j,k) =  +flx(IB3)
 
 !                 if(flx(IDN).ne.flx(IDN)) then
-!                     print*,i,j,k,flx(IDN),Ql(i,j,k,IDN),Qr(i,j,k,IDN)
+!                     print*,i,j,k,flx(IDN),Ql(IDN,i,j,k),Qr(IDN,i,j,k)
 !                 endif
         
         
                  weight1(i,j,k) = wghtCT
             enddo
             enddo
-          !$omp end do
             enddo
         end if 
     
     
           ! numerical flux in the y direction
           do k=ks,ke
-      !$omp do private( i, dQp, dQm, dQmon )
           do j=js-1,je+1
           do i=is-1,ie+1
-             dQp(1:NVAR) = Q(i,j+1,k,1:NVAR) - Q(i,j  ,k,1:NVAR)
-             dQm(1:NVAR) = Q(i,j  ,k,1:NVAR) - Q(i,j-1,k,1:NVAR)
+             dQp(1:NVAR) = Q(1:NVAR,i,j+1,k) - Q(1:NVAR,i,j  ,k)
+             dQm(1:NVAR) = Q(1:NVAR,i,j  ,k) - Q(1:NVAR,i,j-1,k)
     
              call vanLeer(NVAR, dQp, dQm, dQmon)
     
              ! Ql(i,j,k) --> W_(i-1/2,j,k)
              ! Qr(i,j,k) --> W_(i-1/2,j,k)
-             Ql(i,j+1,k,1:NVAR) = Q(i,j,k,1:NVAR) + 0.5d0*dQmon(1:NVAR)
-             Qr(i,j  ,k,1:NVAR) = Q(i,j,k,1:NVAR) - 0.5d0*dQmon(1:NVAR)
+             Ql(1:NVAR,i,j+1,k) = Q(1:NVAR,i,j,k) + 0.5d0*dQmon(1:NVAR)
+             Qr(1:NVAR,i,j  ,k) = Q(1:NVAR,i,j,k) - 0.5d0*dQmon(1:NVAR)
           enddo
           enddo
-          !$omp end do
           enddo
     
           ! B field part
           do k=ks,ke
-      !$omp do private( i, dQp, dQm, dQmon )
           do j=js-1,je+1
           do i=is-1,ie+1
-             dQp(1:3) = Bc(i,j+1,k,1:3) - Bc(i,j  ,k,1:3)
-             dQm(1:3) = Bc(i,j  ,k,1:3) - Bc(i,j-1,k,1:3)
+             dQp(1:3) = Bc(1:3,i,j+1,k) - Bc(1:3,i,j  ,k)
+             dQm(1:3) = Bc(1:3,i,j  ,k) - Bc(1:3,i,j-1,k)
     
              call vanLeer(3, dQp, dQm, dQmon)
     
              ! Ql(i,j,k) --> W_(i-1/2,j,k)
              ! Qr(i,j,k) --> W_(i-1/2,j,k)
-             Ql(i,j+1,k,NVAR+1:NFLX) = Bc(i,j,k,1:3) + 0.5d0*dQmon(1:3)
-             Qr(i,j  ,k,NVAR+1:NFLX) = Bc(i,j,k,1:3) - 0.5d0*dQmon(1:3)
+             Ql(NVAR+1:NFLX,i,j+1,k) = Bc(1:3,i,j,k) + 0.5d0*dQmon(1:3)
+             Qr(NVAR+1:NFLX,i,j  ,k) = Bc(1:3,i,j,k) - 0.5d0*dQmon(1:3)
           enddo
           enddo
-          !$omp end do
           enddo
     
         if( flag_flux == 1 ) then
           do k=ks,ke
-         !$omp do private( i, flx, wghtCT )
           do j=js,je+1
           do i=is-1,ie+1
-             call HLL(2,Ql(i,j,k,:),Qr(i,j,k,:),Bs(i,j,k,2),yf(j+1) - yf(j), flx,wghtCT)
+             call HLL(2,Ql(:,i,j,k),Qr(:,i,j,k),Bs(2,i,j,k),yf(j+1) - yf(j), flx,wghtCT)
              if (flx(IDN) >= 0.0) then 
-                 flx(ISC) = flx(IDN)*Ql(i,j,k,ISC);
+                 flx(ISC) = flx(IDN)*Ql(ISC,i,j,k);
              else 
-                 flx(ISC) = flx(IDN)*Qr(i,j,k,ISC);
+                 flx(ISC) = flx(IDN)*Qr(ISC,i,j,k);
              endif
     
-             G(i,j,k,1:NVAR) = flx(1:NVAR)
+             G(1:NVAR,i,j,k) = flx(1:NVAR)
              e1_yf(i,j,k) =  - flx(IB3)
              e3_yf(i,j,k) =    flx(IB1)
     
@@ -695,22 +660,20 @@ contains
              weight2(i,j,k) = wghtCT
           enddo
           enddo
-          !$omp end do
           enddo
         else if (flag_flux == 3 ) then
           do k=ks,ke
-         !$omp do private( i, flx, wghtCT )
           do j=js,je+1
           do i=is-1,ie+1
-             call HLLD(2,Ql(i,j,k,:),Qr(i,j,k,:),Bs(i,j,k,2),yf(j+1) - yf(j), flx,wghtCT)
+             call HLLD(2,Ql(:,i,j,k),Qr(:,i,j,k),Bs(2,i,j,k),yf(j+1) - yf(j), flx,wghtCT)
 
              if (flx(IDN) >= 0.0) then 
-                 flx(ISC) = flx(IDN)*Ql(i,j,k,ISC);
+                 flx(ISC) = flx(IDN)*Ql(ISC,i,j,k);
              else 
-                 flx(ISC) = flx(IDN)*Qr(i,j,k,ISC);
+                 flx(ISC) = flx(IDN)*Qr(ISC,i,j,k);
              endif
     
-             G(i,j,k,1:NVAR) = flx(1:NVAR)
+             G(1:NVAR,i,j,k) = flx(1:NVAR)
              e1_yf(i,j,k) =  - flx(IB3)
              e3_yf(i,j,k) =    flx(IB1)
     
@@ -718,13 +681,9 @@ contains
              weight2(i,j,k) = wghtCT
           enddo
           enddo
-          !$omp end do
           enddo
         endif
-
-!$omp end parallel
     
-!     print*, omp_get_wtime() - stime
           call ElectricField( Q, Bc, e2_xf, e3_xf, e3_yf, e1_yf, weight1, weight2, E )
     
         return
@@ -1150,38 +1109,30 @@ contains
       real(8) :: Etmp(nxtot,nytot,nztot) 
       real(8) :: de3_l1, de3_r1, de3_l2, de3_r2
 
-!$omp parallel
       do k=ks,ke
-      !$omp do private(i)
       do j=js-1, je+1
       do i=is-1, ie+1
-           Etmp(i,j,k) = Q(i,j,k,IVY)*Bc(i,j,k,1) - Q(i,j,k,IVX)*Bc(i,j,k,2)
+           Etmp(i,j,k) = Q(IVY,i,j,k)*Bc(1,i,j,k) - Q(IVX,i,j,k)*Bc(2,i,j,k)
       enddo
       enddo
-      !$omp end do 
       enddo
 
-      !$omp do private(i)
       do j=js, je
       do i=is, ie+1
-           E(i,j,ke+1,2) = e2_xf(i,j,ks)
-           E(i,j,ks  ,2) = e2_xf(i,j,ks)
+           E(2,i,j,ke+1) = e2_xf(i,j,ks)
+           E(2,i,j,ks  ) = e2_xf(i,j,ks)
       enddo
       enddo
-      !$omp end do 
 
-      !$omp do private(i)
       do j=js, je+1
       do i=is, ie
-           E(i,j,ke+1,1) = e1_yf(i,j,ks)
-           E(i,j,ks  ,1) = e1_yf(i,j,ks)
+           E(1,i,j,ke+1) = e1_yf(i,j,ks)
+           E(1,i,j,ks  ) = e1_yf(i,j,ks)
       enddo
       enddo
-      !$omp end do 
 
 
       do k=ks,ke
-      !$omp do private(i, de3_l2, de3_r2, de3_l1, de3_r1 )
       do j=js, je+1
       do i=is, ie+1
           de3_l2 = (1.0d0-weight1(i,j-1,k))*(e3_yf(i  ,j,k) - Etmp(i  ,j-1,k)) + &
@@ -1196,14 +1147,12 @@ contains
           de3_r1 = (1.0d0-weight2(i  ,j,k))*(e3_xf(i,j  ,k) - Etmp(i  ,j  ,k)) + &
                    (      weight2(i  ,j,k))*(e3_xf(i,j-1,k) - Etmp(i  ,j-1,k))
 
-         E(i,j,k,3) = 0.25d0*( de3_l1 + de3_r1 + de3_l2 + de3_r2 + &
+         E(3,i,j,k) = 0.25d0*( de3_l1 + de3_r1 + de3_l2 + de3_r2 + &
                           e3_yf(i-1,j,k) + e3_yf(i,j,k) + e3_xf(i,j-1,k) + e3_xf(i,j,k))
       enddo
       enddo
-      !$omp end do 
       enddo
 
-!$omp end parallel
 
       return
       end subroutine ElectricField 
@@ -1220,57 +1169,42 @@ contains
       real(8) :: divB 
       integer::i,n,j,k
 
-!$omp parallel 
-
-      !$omp do private( i,j,k )
-      do n=1,NVAR
       do k=ks,ke
       do j=js,je
       do i=is,ie
-         U(i,j,k,n) = Uo(i,j,k,n) + dt1*(- F(i+1,j,k,n) + F(i,j,k,n))/(xf(i+1)-xf(i)) &
-                                  + dt1*(- G(i,j+1,k,n) + G(i,j,k,n))/(yf(j+1)-yf(j)) 
+         U(:,i,j,k) = Uo(:,i,j,k) + dt1*(- F(:,i+1,j,k) + F(:,i,j,k))/(xf(i+1)-xf(i)) &
+                                  + dt1*(- G(:,i,j+1,k) + G(:,i,j,k))/(yf(j+1)-yf(j)) 
       enddo
       enddo
       enddo
-      enddo
-      !$omp end do
 
       do k=ks,ke
-      !$omp do private( i )
       do j=js,je
       do i=is,ie+1
-           Bs(i,j,k,1) = Bso(i,j,k,1) &
-                       - dt1*(E(i,j+1,k,3) - E(i,j,k,3))/(yv(j+1) - yv(j))
+           Bs(1,i,j,k) = Bso(1,i,j,k) &
+                       - dt1*(E(3,i,j+1,k) - E(3,i,j,k))/(yv(j+1) - yv(j))
       enddo
       enddo
-      !$omp end do
       enddo
 
       do k=ks,ke
-      !$omp do private( i )
       do j=js,je+1
       do i=is,ie
-           Bs(i,j,k,2) = Bso(i,j,k,2) &
-                       + dt1*(E(i+1,j,k,3) - E(i,j,k,3))/(xv(i+1) - xv(i))
+           Bs(2,i,j,k) = Bso(2,i,j,k) &
+                       + dt1*(E(3,i+1,j,k) - E(3,i,j,k))/(xv(i+1) - xv(i))
       enddo
       enddo
-      !$omp end do
       enddo
 
       do k=ks,ke+1
-      !$omp do private( i )
       do j=js,je
       do i=is,ie
-           Bs(i,j,k,3) = Bso(i,j,k,3) &
-                       - dt1*(E(i+1,j,k,2) - E(i,j,k,2))/(xf(i+1) - xf(i)) &
-                       + dt1*(E(i,j+1,k,1) - E(i,j,k,1))/(yf(j+1) - yf(j))
+           Bs(3,i,j,k) = Bso(3,i,j,k) &
+                       - dt1*(E(2,i+1,j,k) - E(2,i,j,k))/(xf(i+1) - xf(i)) &
+                       + dt1*(E(1,i,j+1,k) - E(1,i,j,k))/(yf(j+1) - yf(j))
       enddo
       enddo
-      !$omp end do
       enddo
-
-
-      !$omp end parallel
 
       return
       end subroutine UpdateConsv
@@ -1281,8 +1215,7 @@ contains
       real(8), intent(in) :: xf(:), xv(:), yf(:), yv(:)
       real(8), intent(in) :: Q(:,:,:,:), Bc(:,:,:,:)
       integer::i,j,k
-!      character(20),parameter::dirname="snap_B0.8_ct_hll"
-      character(20),parameter::dirname="snap_ct_cpu1"
+      character(20),parameter::dirname="snap_B0.8_ct_hll"
       character(20),parameter::base="kh"
       character(20),parameter::suffix=".dat"
       character(40)::filename
@@ -1311,8 +1244,8 @@ contains
       do k=ks,ke
       do j=js,je
       do i=is,ie
-          write(unitbin,*) xv(i), yv(j), Q(i,j,k,IDN), Q(i,j,k,IVX), Q(i,j,k,IVY), Q(i,j,k,IVZ), Q(i,j,k,IPR), &
-              Bc(i,j,k,1), Bc(i,j,k,2), Bc(i,j,k,3), Q(i,j,k,ISC)
+          write(unitbin,*) xv(i), yv(j), Q(IDN,i,j,k), Q(IVX,i,j,k), Q(IVY,i,j,k), Q(IVZ,i,j,k), Q(IPR,i,j,k), &
+              Bc(1,i,j,k), Bc(2,i,j,k), Bc(3,i,j,k), Q(ISC,i,j,k)
       enddo
       enddo
       enddo
@@ -1365,9 +1298,9 @@ contains
       do k=ks,ke
       do j=js,je
       do i=is,ie
-         error = dabs( ( Bc(i+1,j,k,1) - Bc(i-1,j,k,1) )/(xf(i+1)-xf(i-1))  &
-                    + ( Bc(i,j+1,k,2) - Bc(i,j-1,k,2) )/(yf(j+1)-yf(j-1)) )/ &
-                    dsqrt( Bc(i,j,k,IB1)**2 + Bc(i,j,k,2)**2 )*min(xf(i+1) - xf(i),yf(j+1)-yf(j))
+         error = dabs( ( Bc(1,i+1,j,k) - Bc(1,i-1,j,k) )/(xf(i+1)-xf(i-1))  &
+                     + ( Bc(2,i,j+1,k) - Bc(2,i,j-1,k) )/(yf(j+1)-yf(j-1)) )/ &
+                    dsqrt( Bc(i,j,k,IB1)**2 + Bc(2,i,j,k)**2 )*min(xf(i+1) - xf(i),yf(j+1)-yf(j))
 
          divergenceB = divergenceB + error
       enddo
@@ -1391,11 +1324,11 @@ contains
       do k=ks,ke
       do j=js,je
       do i=is,ie
-           dvy = dvy + Q(i,j,k,IVY)**2
-           er_divBs = er_divBs + ( Bs(i+1,j,k,1) - Bs(i,j,k,1) + Bs(i,j+1,k,2) - Bs(i,j,k,2) )**2 &
-                       /( Bc(i,j,k,1)**2 + Bc(i,j,k,2)**2 )
-           er_divBc = er_divBc + 0.5d0*( Bc(i+1,j,k,1) - Bc(i-1,j,k,1) + Bc(i,j+1,k,2) - Bc(i,j-1,k,2) )**2 &
-                                       /( Bc(i,j,k,1)**2 + Bc(i,j,k,2)**2 )
+           dvy = dvy + Q(IVY,i,j,k)**2
+           er_divBs = er_divBs + ( Bs(1,i+1,j,k) - Bs(1,i,j,k) + Bs(2,i,j+1,k) - Bs(2,i,j,k) )**2 &
+                       /( Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 )
+           er_divBc = er_divBc + 0.5d0*( Bc(1,i+1,j,k) - Bc(1,i-1,j,k) + Bc(2,i,j+1,k) - Bc(2,i,j-1,k) )**2 &
+                                       /( Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 )
       enddo
       enddo
       enddo
