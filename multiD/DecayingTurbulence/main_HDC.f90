@@ -38,22 +38,21 @@ real(8), parameter :: alpha = 0.1d0    ! decay timescale of divergence B
 
 ! indices of the conservative variables
 integer, parameter :: IDN = 1
-integer, parameter :: IM1 = 2
-integer, parameter :: IM2 = 3
-integer, parameter :: IM3 = 4
+integer, parameter :: IMX = 2
+integer, parameter :: IMY = 3
+integer, parameter :: IMZ = 4
 integer, parameter :: IPR = 5
-integer, parameter :: IB1 = 6
-integer, parameter :: IB2 = 7
-integer, parameter :: IB3 = 8
-integer, parameter :: ISC = 9
-integer, parameter :: IPS = 10
-integer, parameter :: NVAR = 10
-integer, parameter :: NFLX = 10
+integer, parameter :: IBX = 6
+integer, parameter :: IBY = 7
+integer, parameter :: IBZ = 8
+integer, parameter :: IPS = 9
+integer, parameter :: NVAR = 9
+integer, parameter :: NFLX = 9
 
 ! indices of the primitive variables
-integer, parameter :: IV1 = 2
-integer, parameter :: IV2 = 3
-integer, parameter :: IV3 = 4
+integer, parameter :: IVX = 2
+integer, parameter :: IVY = 3
+integer, parameter :: IVZ = 4
 integer, parameter :: IEN = 5
 
 
@@ -91,7 +90,7 @@ integer :: i, j,k
       write(6,*) "setup grids and initial condition"
       call GenerateGrid(xf, xv, yf, yv, zf, zv)
       call GenerateProblem(xv, yv, zv, xf, yf, zf, Q )
-      call Prim2Consrv(Q, U)
+      call PrIMYConsrv(Q, U)
       call BoundaryCondition(xf,yf,Q)
       call Output( .TRUE., flag_binary, dirname, xf, xv, yf, yv, Q )
 
@@ -186,40 +185,17 @@ real(8),parameter:: eps = 1.0d-1
 real(8) :: psinorm, rand, v0,pi, B0
 
       pi = dacos(-1.0d0)
-      psinorm = 1.0d0/(2.0d0*pi*k_ini)
-      do k=ks,ke
-      do j=js,je+1
-      do i=is,ie+1
-         vpsi1(i,j,k) = psinorm * sin(k_ini*xv(i)*2.0d0*pi/(xmax-xmin)) &
-     &                          * sin(k_ini*yf(j)*2.0d0*pi/(ymax-ymin))
-         vpsi2(i,j,k) = psinorm * sin(k_ini*xf(i)*2.0d0*pi/(xmax-xmin)) &
-     &                          * sin(k_ini*yv(j)*2.0d0*pi/(ymax-ymin))
-      enddo
-      enddo
-      enddo
-
-!      v0 = sqrt(2.0d0)
-      v0 = 2.0d0
-
-      B0  = 0.0d0
 
       do k=ks,ke
       do j=js,je
       do i=is,ie
          Q(IDN,i,j,k) = 1.0d0
-         Q(IV1,i,j,k) = v0*(vpsi1(i,j+1,k)-vpsi1(i,j,k))/(yf(j+1)-yf(j))
-         Q(IV2,i,j,k) = -v0*(vpsi2(i+1,j,k)-vpsi2(i,j,k))/(xf(i+1)-xf(i))
-
-         call random_number(rand)
-         Q(IV1,i,j,k) = Q(IV1,i,j,k)* (1.0d0 + eps*(rand-0.5d0))
-
-         call random_number(rand)
-         Q(IV2,i,j,k) = Q(IV2,i,j,k)* (1.0d0 + eps*(rand-0.5d0))
-
+         Q(IVX,i,j,k) = 0.0d0
+         Q(IVY,i,j,k) = 0.0d0
          Q(IPR,i,j,k) = 1.0d0
-         Q(IB1,i,j,k) = B0
-         Q(IB2,i,j,k) = 0.0d0
-         Q(IB3,i,j,k) = 0.0d0
+         Q(IBX,i,j,k) = 0.0d0
+         Q(IBY,i,j,k) = 0.0d0
+         Q(IBZ,i,j,k) = 0.0d0
          Q(IPS,i,j,k) = 0.0d0
       enddo
       enddo
@@ -247,7 +223,6 @@ integer::i,j,k,ish
       do k=ks,ke
       do j=1,nytot-1
       do i=1,ngh
-
           Q(:,ie+i,j,k)= Q(:,is+i-1,j,k)
       enddo
       enddo
@@ -276,7 +251,7 @@ end subroutine BoundaryCondition
 !       Input  : Q
 !       Output : U
 !-------------------------------------------------------------------
-subroutine Prim2Consrv(Q, U)
+subroutine PrIMYConsrv(Q, U)
 implicit none
 real(8), intent(in) :: Q(:,:,:,:)
 real(8), intent(out) :: U(:,:,:,:)
@@ -287,24 +262,23 @@ integer::i,j,k
       do j=js,je
       do i=is,ie
           U(IDN,i,j,k) = Q(IDN,i,j,k)
-          U(IM1,i,j,k) = Q(IDN,i,j,k)*Q(IV1,i,j,k)
-          U(IM2,i,j,k) = Q(IDN,i,j,k)*Q(IV2,i,j,k)
-          U(IM3,i,j,k) = Q(IDN,i,j,k)*Q(IV3,i,j,k)
-          U(IEN,i,j,k) = 0.5d0*Q(IDN,i,j,k)*( Q(IV1,i,j,k)**2 + Q(IV2,i,j,k)**2 + Q(IV3,i,j,k)**2 ) &
-                       + 0.5d0*( Q(IB1,i,j,k)**2 + Q(IB2,i,j,k)**2 + Q(IB3,i,j,k)**2 ) &
+          U(IMX,i,j,k) = Q(IDN,i,j,k)*Q(IVX,i,j,k)
+          U(IMY,i,j,k) = Q(IDN,i,j,k)*Q(IVY,i,j,k)
+          U(IMZ,i,j,k) = Q(IDN,i,j,k)*Q(IVZ,i,j,k)
+          U(IEN,i,j,k) = 0.5d0*Q(IDN,i,j,k)*( Q(IVX,i,j,k)**2 + Q(IVY,i,j,k)**2 + Q(IVZ,i,j,k)**2 ) &
+                       + 0.5d0*( Q(IBX,i,j,k)**2 + Q(IBY,i,j,k)**2 + Q(IBZ,i,j,k)**2 ) &
                        + Q(IPR,i,j,k)/(gam - 1.0d0)
-          U(IB1,i,j,k) = Q(IB1,i,j,k)
-          U(IB2,i,j,k) = Q(IB2,i,j,k)
-          U(IB3,i,j,k) = Q(IB3,i,j,k)
+          U(IBX,i,j,k) = Q(IBX,i,j,k)
+          U(IBY,i,j,k) = Q(IBY,i,j,k)
+          U(IBZ,i,j,k) = Q(IBZ,i,j,k)
           U(IPS,i,j,k) = Q(IPS,i,j,k)
-          U(ISC,i,j,k) = Q(IDN,i,j,k)*Q(ISC,i,j,k)
       enddo
       enddo
       !$omp end parallel do
       enddo
       
 return
-end subroutine Prim2Consrv
+end subroutine PrIMYConsrv
 !-------------------------------------------------------------------
 !       Conservative variables ===> Primitive variables
 !       Input  : U
@@ -323,17 +297,16 @@ real(8) :: inv_d;
       do i=is,ie
            Q(IDN,i,j,k) = U(IDN,i,j,k)
            inv_d = 1.0d0/U(IDN,i,j,k)
-           Q(IV1,i,j,k) = U(IM1,i,j,k)*inv_d
-           Q(IV2,i,j,k) = U(IM2,i,j,k)*inv_d
-           Q(IV3,i,j,k) = U(IM3,i,j,k)*inv_d
+           Q(IVX,i,j,k) = U(IMX,i,j,k)*inv_d
+           Q(IVY,i,j,k) = U(IMY,i,j,k)*inv_d
+           Q(IVZ,i,j,k) = U(IMZ,i,j,k)*inv_d
            Q(IPR,i,j,k) = ( U(IEN,i,j,k) &
-                        - 0.5d0*(U(IM1,i,j,k)**2 + U(IM2,i,j,k)**2 + U(IM3,i,j,k)**2)*inv_d  &
-                        - 0.5d0*(U(IB1,i,j,k)**2 + Q(IB2,i,j,k)**2 + Q(IB3,i,j,k)**2) )*(gam-1.0d0)
-           Q(IB1,i,j,k) = U(IB1,i,j,k)
-           Q(IB2,i,j,k) = U(IB2,i,j,k)
-           Q(IB3,i,j,k) = U(IB3,i,j,k)
+                        - 0.5d0*(U(IMX,i,j,k)**2 + U(IMY,i,j,k)**2 + U(IMZ,i,j,k)**2)*inv_d  &
+                        - 0.5d0*(U(IBX,i,j,k)**2 + Q(IBY,i,j,k)**2 + Q(IBZ,i,j,k)**2) )*(gam-1.0d0)
+           Q(IBX,i,j,k) = U(IBX,i,j,k)
+           Q(IBY,i,j,k) = U(IBY,i,j,k)
+           Q(IBZ,i,j,k) = U(IBZ,i,j,k)
            Q(IPS,i,j,k) = U(IPS,i,j,k)
-           Q(ISC,i,j,k) = U(ISC,i,j,k)*inv_d
       enddo
       enddo
       !$omp end parallel do
@@ -360,10 +333,10 @@ integer::i,j,k
      !$omp parallel do private(i,dtl1,dtl2,cf) reduction (min: dtmin)
       do j=js,je
       do i=is,ie
-         cf = dsqrt( (gam*Q(IPR,i,j,k) + Q(IB1,i,j,k)**2 + Q(IB2,i,j,k)**2 + Q(IB3,i,j,k)**2)/Q(IDN,i,j,k))
-         dtl1 =(xf(i+1)-xf(i))/(abs(Q(IV1,i,j,k)) + cf)
-         dtl2 =(yf(j+1)-yf(j))/(abs(Q(IV2,i,j,k)) + cf)
-!         dtl3 =(zf(j+1)-zf(j))/(abs(Q(IV3,i,j,k)) + cf)
+         cf = dsqrt( (gam*Q(IPR,i,j,k) + Q(IBX,i,j,k)**2 + Q(IBY,i,j,k)**2 + Q(IBZ,i,j,k)**2)/Q(IDN,i,j,k))
+         dtl1 =(xf(i+1)-xf(i))/(abs(Q(IVX,i,j,k)) + cf)
+         dtl2 =(yf(j+1)-yf(j))/(abs(Q(IVY,i,j,k)) + cf)
+!         dtl3 =(zf(j+1)-zf(j))/(abs(Q(IVZ,i,j,k)) + cf)
          dtmin = min(dtl1,dtl2,dtmin)
 !         dtlocal = min(dtl1,dtl2)
 !         if(dtlocal .lt. dtmin) dtmin = dtlocal
@@ -452,14 +425,6 @@ real(8) :: ddmon, dvmon, dpmon
           do i=is,ie+1
             call HLL(1,Ql(:,i,j,k),Qr(:,i,j,k),flx)
     
-!             flx(IB1) = flag_HDC*0.5d0*(Ql(IPS,i,j,k) + Qr(IPS,i,j,k) - ch*(Qr(IB1,i,j,k) - Ql(IB1,i,j,k)) )
-!             flx(IPS) = flag_HDC*0.5d0*(ch*ch*(Ql(IB1,i,j,k) + Qr(IB1,i,j,k)) - ch*(Qr(IPS,i,j,k) - Ql(IPS,i,j,k)) )
-!    
-!!             if (flx(IDN) >= 0.0) then 
-!                 flx(ISC) = flx(IDN)*Ql(ISC,i,j,k);
-!             else 
-!                 flx(ISC) = flx(IDN)*Qr(ISC,i,j,k);
-!             endif
     
              F(:,i,j,k)  = flx(:)
           enddo
@@ -473,14 +438,6 @@ real(8) :: ddmon, dvmon, dpmon
           do i=is,ie+1
              call HLLD(1,Ql(:,i,j,k),Qr(:,i,j,k),flx)
     
-!             flx(IB1) = flag_HDC*0.5d0*(Ql(IPS,i,j,k) + Qr(IPS,i,j,k) - ch*(Qr(IB1,i,j,k) - Ql(IB1,i,j,k)) )
-!             flx(IPS) = flag_HDC*0.5d0*(ch*ch*(Ql(IB1,i,j,k) + Qr(IB1,i,j,k)) - ch*(Qr(IPS,i,j,k) - Ql(IPS,i,j,k)) )
-!    
-!             if (flx(IDN) >= 0.0) then 
-!                 flx(ISC) = flx(IDN)*Ql(ISC,i,j,k);
-!             else 
-!                 flx(ISC) = flx(IDN)*Qr(ISC,i,j,k);
-!             endif
     
              F(:,i,j,k)  = flx(:)
           enddo
@@ -547,7 +504,7 @@ end subroutine Numericalflux
 !
 !     Input: Ql, Qr: primitive variables containing the perpendicular B fields 
 !                    at the left and right states
-!            1D array (IDN, IV1, IV2, IV3, IPR, IBperp1, IBperp2)
+!            1D array (IDN, IVX, IVY, IVZ, IPR, IBperp1, IBperp2)
 !                                 |
 !                                 |
 !                           Ql    |    Qr
@@ -558,7 +515,7 @@ end subroutine Numericalflux
 !     Input: b1    : magnetic field perpendicular to the initial discontinuity
 !
 !     Output: flx  : flux estimated at the initial discontinuity
-!            index: (IDN, IV1, IV2, IV3, IPR, IBperp1, IBperp2)
+!            index: (IDN, IVX, IVY, IVZ, IPR, IBperp1, IBperp2)
 !---------------------------------------------------------------------
 subroutine HLL(idir,Ql,Qr,flx)
 implicit none
@@ -578,19 +535,19 @@ real(8):: pbl, pbr, ptotl, ptotr
 integer :: i, n
 
       if( idir == 1 ) then
-           IVpara  = IV1
-           IVperp1 = IV2
-           IVperp2 = IV3
-           IBpara  = IB1
-           IBperp1 = IB2
-           IBperp2 = IB3
+           IVpara  = IVX
+           IVperp1 = IVY
+           IVperp2 = IVZ
+           IBpara  = IBX
+           IBperp1 = IBY
+           IBperp2 = IBZ
       else if (idir == 2 ) then
-           IVpara  = IV2
-           IVperp1 = IV3
-           IVperp2 = IV1
-           IBpara  = IB2
-           IBperp1 = IB3
-           IBperp2 = IB1
+           IVpara  = IVY
+           IVperp1 = IVZ
+           IVperp2 = IVX
+           IBpara  = IBY
+           IBperp1 = IBZ
+           IBperp2 = IBX
       endif
           
           pbl = 0.5d0*(b1**2 + Ql(IBperp1)**2 + Ql(IBperp2)**2)
@@ -659,11 +616,6 @@ integer :: i, n
           flx(IBpara) = flag_HDC*0.5d0*(Ql(IPS) + Qr(IPS) - ch*(Qr(IBpara) - Ql(IBpara)) )
           flx(IPS) = flag_HDC*0.5d0*(ch*ch*(Ql(IBpara) + Qr(IBpara)) - ch*(Qr(IPS) - Ql(IPS)) )
     
-          if (flx(IDN) >= 0.0) then 
-                 flx(ISC) = flx(IDN)*Ql(ISC);
-          else 
-                 flx(ISC) = flx(IDN)*Qr(ISC);
-          endif
 
 return
 end subroutine HLL
@@ -674,7 +626,7 @@ end subroutine HLL
 !
 !     Input: Ql, Qr: primitive variables containing the perpendicular B fields 
 !                    at the left and right states
-!            1D array (IDN, IV1, IV2, IV3, IPR, IBperp1, IBperp2)
+!            1D array (IDN, IVX, IVY, IVZ, IPR, IBperp1, IBperp2)
 !                                 |
 !                                 |
 !                           Ql    |    Qr
@@ -685,7 +637,7 @@ end subroutine HLL
 !     Input: b1    : magnetic field perpendicular to the initial discontinuity
 !
 !     Output: flx  : flux estimated at the initial discontinuity
-!            index: (IDN, IV1, IV2, IV3, IPR, IBperp1, IBperp2)
+!            index: (IDN, IVX, IVY, IVZ, IPR, IBperp1, IBperp2)
 !---------------------------------------------------------------------
 subroutine HLLD(idir,Ql,Qr,flx)
 implicit none
@@ -709,19 +661,19 @@ real(8) :: ptot_stl, ptot_str,ptot_st, Cl, Cr, Cml, Cmr, Cml_inv, Cmr_inv, bxsgn
 integer :: i, n
 
       if( idir == 1 ) then
-           IVpara  = IV1
-           IVperp1 = IV2
-           IVperp2 = IV3
-           IBpara  = IB1
-           IBperp1 = IB2
-           IBperp2 = IB3
+           IVpara  = IVX
+           IVperp1 = IVY
+           IVperp2 = IVZ
+           IBpara  = IBX
+           IBperp1 = IBY
+           IBperp2 = IBZ
       else if (idir == 2 ) then
-           IVpara  = IV2
-           IVperp1 = IV3
-           IVperp2 = IV1
-           IBpara  = IB2
-           IBperp1 = IB3
-           IBperp2 = IB1
+           IVpara  = IVY
+           IVperp1 = IVZ
+           IVperp2 = IVX
+           IBpara  = IBY
+           IBperp1 = IBZ
+           IBperp2 = IBX
       endif
           b1 = 0.5d0*( Ql(IBpara) + Qr(IBpara) )
           
@@ -922,11 +874,6 @@ integer :: i, n
              flx(IBpara) = flag_HDC*0.5d0*(Ql(IPS) + Qr(IPS) - ch*(Qr(IBpara) - Ql(IBpara)) )
              flx(IPS) = flag_HDC*0.5d0*(ch*ch*(Ql(IBpara) + Qr(IBpara)) - ch*(Qr(IPS) - Ql(IPS)) )
     
-             if (flx(IDN) >= 0.0) then 
-                 flx(ISC) = flx(IDN)*Ql(ISC);
-             else 
-                 flx(ISC) = flx(IDN)*Qr(ISC);
-             endif
 
 return
 end subroutine HLLD
@@ -981,10 +928,45 @@ logical, intent(in) :: flag ! false --> output per dtsnap, true --> force to out
 logical, intent(in) :: flag_binary ! false --> ascii, true --> binary
 character(20), intent(in) :: dirname 
 real(8), intent(in) :: xf(:), xv(:), yf(:), yv(:), Q(:,:,:,:)
+real(8) :: vorticity(nxtot,nytot,nztot)
+real(8) :: vecpot(nxtot,nytot,nztot), vecpot1(nxtot,nytot,nztot)
+
 integer::i,j,k
 character(100)::filename
 real(8), save :: tsnap = - dtsnap
 integer, save :: nsnap
+real(8) :: vecpot_ave
+
+!!!!! vorcitity !!!!!
+      do k=ks,ke
+      do j=js,je
+      do i=is,ie
+           vorticity(i,j,k) = 0.5d0*(Q(IVY,i+1,j,k) - Q(IVY,i-1,j,k))/(xf(i+1) - xf(i)) &
+                            - 0.5d0*(Q(IVX,i,j+1,k) - Q(IVX,i,j-1,k))/(yf(j+1) - yf(j))
+      enddo
+      enddo
+      enddo
+
+!!!!! vector potential!!!!!
+      vecpot(:,:,:) = 0.0d0
+      vecpot1(:,:,:) = 0.0d0
+      do k=ks,ke
+      do j=js,je-1
+      do i=is,is
+           vecpot(i,j+1,k) = vecpot(i,j,k) + 0.5d0*(Q(IBX,i,j+1,k) + Q(IBX,i,j,k))*(yv(j+1) - yv(j))
+      enddo
+      enddo
+      enddo
+
+      do k=ks,ke
+      do j=js,je
+      do i=is,ie-1
+           vecpot(i+1,j,k) = vecpot(i,j,k) - 0.5d0*(Q(IBY,i+1,j,k) + Q(IBY,i,j,k))*(xv(i+1) - xv(i))
+      enddo
+      enddo
+      enddo
+      vecpot_ave = sum(vecpot(is:ie,js:je,ks:ke))/dble(nx*ny*nz)
+      vecpot(:,:,:) = vecpot(:,:,:) - vecpot_ave
 
     if( .not.flag) then
         if( time + 1.0d-14.lt. tsnap+dtsnap) return
@@ -997,10 +979,12 @@ integer, save :: nsnap
         write(unitsnap) time
         write(unitsnap) nx
         write(unitsnap) ny
-        write(unitsnap) NVAR
+        write(unitsnap) NVAR-1
         write(unitsnap) xv(is:ie)
         write(unitsnap) yv(js:je)
-        write(unitsnap) real(Q(1:NVAR,is:ie,js:je,ks:ke)) ! single precision
+        write(unitsnap) real(Q(1:NVAR-1,is:ie,js:je,ks:ke)) ! single precision
+        write(unitsnap) real(vorticity(is:ie,js:je,ks:ke)) ! single precision
+        write(unitsnap) real(vecpot(is:ie,js:je,ks:ke)) ! single precision
         close(unitsnap)
     else 
         filename = trim(dirname)//"/snap"//trim(filename)//".dat"
@@ -1010,8 +994,10 @@ integer, save :: nsnap
           do k=ks,ke
           do j=js,je
           do i=is,ie
-              write(unitsnap,*) xv(i), yv(j), Q(IDN,i,j,k), Q(IV1,i,j,k), Q(IV2,i,j,k), Q(IV3,i,j,k), &
-                                Q(IPR,i,j,k), Q(IB1,i,j,k), Q(IB2,i,j,k), Q(IB3,i,j,k),Q(ISC,i,j,k), Q(IPS,i,j,k) 
+              write(unitsnap,*) xv(i), yv(j), Q(IDN,i,j,k), Q(IVX,i,j,k), Q(IVY,i,j,k), Q(IVZ,i,j,k), &
+                                Q(IPR,i,j,k), Q(IBX,i,j,k), Q(IBY,i,j,k), Q(IBZ,i,j,k)  &
+                                ,vorticity(i,j,k),vecpot(i,j,k) 
+
           enddo
           enddo
           enddo
@@ -1038,28 +1024,25 @@ write(command, *) 'if [ ! -d ', trim(outdir), ' ]; then mkdir -p ', trim(outdir)
 !      write(*, *) trim(command)
 call system(command)
 end subroutine makedirs
-
-
+!-------------------------------------------------------------------
+!       Realtime Analysis
+!       Input  : xf, xv
+!       Output : phys_evo(nevo)
+!-------------------------------------------------------------------
 subroutine RealtimeAnalysis(xv,yv,Q,phys_evo)
 implicit none
 real(8), intent(in) :: xv(:), yv(:), Q(:,:,:,:)
 real(8), intent(out) :: phys_evo(:)
 integer::i,j,k
-real(8) :: dvy, er_divB
 
-      dvy = 0.0d0
-      er_divB = 0.0d0
       do k=ks,ke
       do j=js,je
       do i=is,ie
-           dvy = dvy + Q(IV2,i,j,k)**2
-           er_divB = er_divB + ( Q(IB1,i+1,j,k) - Q(IB1,i-1,j,k) + Q(IB2,i,j+1,k) - Q(IB2,i,j-1,k) )**2 &
-                       /( Q(IB1,i,j,k)**2 + Q(IB2,i,j,k)**2 )
       enddo
       enddo
       enddo
-      phys_evo(1) = sqrt(dvy/dble(nx*ny))
-      phys_evo(2) = sqrt(er_divB/dble(nx*ny))
+      phys_evo(1) = 0.0d0
+      phys_evo(2) = 0.0d0
       
 return
 end subroutine

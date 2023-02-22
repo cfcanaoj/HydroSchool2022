@@ -6,14 +6,14 @@ implicit none
 integer :: ntime = 0    ! counter of the timestep
 real(8) :: time = 0.0d0  ! time 
 real(8) :: dt   = 0.0d0  ! time width
-real(8),parameter:: timemax=25.0d0 ! simulation end time
+real(8),parameter:: timemax=10.0d0 ! simulation end time
 
 ! option
 integer, parameter :: flag_flux = 2 ! 1 (HLL), 2 (HLLD)
 
 ! coordinate 
-integer,parameter::nx=50        ! the number of grids in the simulation box
-integer,parameter::ny=150 ! the number of grids in the simulation box
+integer,parameter::nx=128*1*1 ! the number of grids in the simulation box
+integer,parameter::ny=128*2*1 ! the number of grids in the simulation box
 integer,parameter::nz=1          ! the number of grids in the simulation box
 integer,parameter::ngh=2         ! the number of ghost cells
 integer,parameter::nxtot=nx+2*ngh+1 ! the total number of grids including ghost cells
@@ -25,23 +25,22 @@ integer,parameter::ks=1         ! the index of the leftmost grid
 integer,parameter::ie=nx+ngh     ! the index of the rightmost grid
 integer,parameter::je=ny+ngh     ! the index of the rightmost grid
 integer,parameter::ke=1 ! the index of the rightmost grid
-real(8),parameter::xmin=-0.25d0,xmax=0.25d0
-real(8),parameter::ymin=-0.75d0,ymax=0.75d0
+real(8),parameter::xmin=-0.5d0,xmax=0.5d0
+real(8),parameter::ymin=-1.0d0,ymax=1.0d0
 real(8),parameter::zmin=0.0d0,zmax=1.0d0
 
 real(8),parameter::Ccfl=0.4d0
 
-real(8),parameter::grav_accy=-0.1d0  ! gravitaional acceleration
 
 ! indices of the conservative variables
 integer, parameter :: IDN = 1
-integer, parameter :: IM1 = 2
-integer, parameter :: IM2 = 3
-integer, parameter :: IM3 = 4
+integer, parameter :: IMX = 2
+integer, parameter :: IMY = 3
+integer, parameter :: IMZ = 4
 integer, parameter :: IPR = 5
-integer, parameter :: IB1 = 6
-integer, parameter :: IB2 = 7
-integer, parameter :: IB3 = 8
+integer, parameter :: IBX = 6
+integer, parameter :: IBY = 7
+integer, parameter :: IBZ = 8
 integer, parameter :: NVAR = 5
 integer, parameter :: NFLX = 8
 
@@ -92,7 +91,7 @@ integer :: i,j,k
     write(6,*) "setup grids and initial condition"
     call GenerateGrid(xf, xv, yf, yv, zf, zv)
     call GenerateProblem(xv, yv, zv, Q, Bs, Bc)
-    call Prim2Consrv(Q, Bc, U)
+    call PrIMYConsrv(Q, Bc, U)
     call BoundaryCondition( Q, Bs, Bc )
     call Output( .TRUE., flag_binary, dirname, xf, xv, yf, yv, Q, Bc )
 
@@ -122,7 +121,7 @@ integer :: i,j,k
          ntime = ntime + 1
 
          if( mod(ntime,10) .eq. 0 ) then
-             call Analysis(xv,yv,Q,Bc,Bs,phys_evo)
+             call RealtimeAnalysis(xv,yv,Q,Bc,Bs,phys_evo)
              write(unitevo,*) time, phys_evo(1:nevo)
          endif
          call Output( .FALSE., flag_binary, dirname, xf, xv, yf, yv, Q, Bc)
@@ -179,38 +178,26 @@ real(8), intent(in ) :: xv(:), yv(:), zv(:)
 real(8), intent(out) :: Q(:,:,:,:)
 real(8), intent(out) :: Bs(:,:,:,:)
 real(8), intent(out) :: Bc(:,:,:,:)
-real(8) :: pi, den, B0, rho1, rho2, dv, wid, v1, v2, sig
+real(8) :: pi
 
-      pi = dacos(-1.0d0)
-      B0 = 0.5d0*sqrt( abs(grav_accy)/(2.0*2.0d0*pi) )
+    pi = dacos(-1.0d0)
 
-      do k=ks,ke
-      do j=js,je
-      do i=is,ie
-           if( yv(j) .lt. 0.0d0 ) then
-               den = 1.0d0
-           else 
-               den = 2.0d0
-           endif
-           Q(IDN,i,j,k) = den
-           Q(IVX,i,j,k) = 0.0d0
-           Q(IVY,i,j,k) = 0.0d0
-           Q(IVZ,i,j,k) = 0.0d0
-           Q(IPR,i,j,k) = 2.5d0 + grav_accy*den*yv(j)
 
-           Q(IVY,i,j,k)= 0.01d0/4.0d0 &
-                     & *(-dcos(2.0d0*pi*(xv(i)-(xmax+xmin)/2.0d0)/(xmax-xmin))) &
-                     & *(1.0d0+cos(2.0d0*pi*(yv(j)-(ymax+ymin)/2.0d0)/(ymax-ymin)))
-!                     & *dexp( - (xv(i) - (xmax+x1min)/2.0d0)**2/(0.1**2) )
-!                     & *(+cos(2.0d0*pi*(xv(i)-(xmax+x1min)/2.0d0)/(xmax-x1min)))
-      enddo
-      enddo
-      enddo
+    do k=ks,ke
+    do j=js,je
+    do i=is,ie
+        Q(IDN,i,j,k) = 1.0d0 
+        Q(IVX,i,j,k) = 0.0
+        Q(IVY,i,j,k) = 0.0
+        Q(IPR,i,j,k) = 1.0d0
+    enddo
+    enddo
+    enddo
 
     do k=ks,ke
     do j=js,je
     do i=is,ie+1
-        Bs(1,i,j,k) = B0
+        Bs(1,i,j,k) = 0.0d0
     enddo
     enddo
     enddo
@@ -316,12 +303,7 @@ integer::i,j,k
     do k=ks,ke
     do j=1,ngh
     do i=is-ngh,ie+ngh
-         Q(IDN,i,js-j,k)  = Q(IDN,i,js-1+j,k)
-         Q(IVX,i,js-j,k)  = Q(IVX,i,js-1+j,k)
-         Q(IVY,i,js-j,k)  = -Q(IVY,i,js-1+j,k)
-         Q(IVZ,i,js-j,k)  = Q(IVZ,i,js-1+j,k)
-         Q(IPR,i,js-j,k)  = Q(IPR,i,js-1+j,k) &
-                          - Q(IDN,i,js-1+j,k)*grav_accy*(2*j-1)*(yf(j+1)-yf(j))
+        Q(:,i,js-j,k)  = Q(:,i,je+1-j,k)
     enddo
     enddo
     enddo
@@ -329,7 +311,7 @@ integer::i,j,k
     do k=ks,ke
     do j=1,ngh
     do i=is-ngh,ie+ngh+1
-        Bs(1,i,js-j,k) = Bs(1,i,js-1+j,k)
+        Bs(1,i,js-j,k) = Bs(1,i,je+1-j,k)
     enddo
     enddo
     enddo
@@ -337,7 +319,7 @@ integer::i,j,k
     do k=ks,ke
     do j=1,ngh
     do i=is-ngh,ie+ngh
-        Bs(2,i,js-j,k) = Bs(2,i,js-1+j,k)
+        Bs(2,i,js-j,k) = Bs(2,i,je+1-j,k)
     enddo
     enddo
     enddo
@@ -346,7 +328,7 @@ integer::i,j,k
     do k=ks,ke+1
     do j=1,ngh
     do i=is-ngh,ie+ngh
-        Bs(3,i,js-j,k) = Bs(3,i,js-1+j,k)
+        Bs(3,i,js-j,k) = Bs(3,i,je+1-j,k)
     enddo
     enddo
     enddo
@@ -355,12 +337,7 @@ integer::i,j,k
     do k=ks,ke
     do j=1,ngh
     do i=is-ngh,ie+ngh
-          Q(IDN,i,je+j,k) = Q(IDN,i,je-j+1,k)
-          Q(IVX,i,je+j,k) = Q(IVX,i,je-j+1,k)
-          Q(IVY,i,je+j,k) = Q(IVY,i,je-j+1,k)
-          Q(IVZ,i,je+j,k) = Q(IVZ,i,je-j+1,k)
-          Q(IPR,i,je+j,k) = Q(IPR,i,je-j+1,k) &
-                          + Q(IDN,i,je-j+1,k)*grav_accy*(2*j-1)*(yf(j+1)-yf(j))
+       Q(:,i,je+j,k)  = Q(:,i,js+j-1,k)
     enddo
     enddo
     enddo
@@ -368,7 +345,7 @@ integer::i,j,k
     do k=ks,ke
     do j=1,ngh
     do i=is-ngh,ie+ngh+1
-          Bs(1,i,je+j,k) = Bs(1,i,je-j+1,k)
+          Bs(1,i,je+j,k) = Bs(1,i,js+j-1,k)
     enddo
     enddo
     enddo
@@ -376,7 +353,7 @@ integer::i,j,k
     do k=ks,ke
     do j=1,ngh
     do i=is-ngh,ie+ngh
-        Bs(2,i,je+j+1,k) = Bs(2,i,je-j,k)
+        Bs(2,i,je+j+1,k) = Bs(2,i,js+j,k)
     enddo
     enddo
     enddo
@@ -384,7 +361,7 @@ integer::i,j,k
     do k=ks,ke+1
     do j=1,ngh
     do i=is-ngh,ie+ngh
-        Bs(3,i,je+j,k) = Bs(3,i,je-j+1,k)
+        Bs(3,i,je+j,k) = Bs(3,i,js+j-1,k)
     enddo
     enddo
     enddo
@@ -402,7 +379,7 @@ end subroutine BoundaryCondition
 !       Input  : Q
 !       Output : U
 !-------------------------------------------------------------------
-subroutine Prim2Consrv(Q, Bc, U)
+subroutine PrIMYConsrv(Q, Bc, U)
 implicit none
 real(8), intent(in) :: Q(:,:,:,:)
 real(8), intent(in) :: Bc(:,:,:,:)
@@ -414,9 +391,9 @@ integer::i,j,k
         do j=js,je
         do i=is,ie
             U(IDN,i,j,k) = Q(IDN,i,j,k)
-            U(IM1,i,j,k) = Q(IDN,i,j,k)*Q(IVX,i,j,k)
-            U(IM2,i,j,k) = Q(IDN,i,j,k)*Q(IVY,i,j,k)
-            U(IM3,i,j,k) = Q(IDN,i,j,k)*Q(IVZ,i,j,k)
+            U(IMX,i,j,k) = Q(IDN,i,j,k)*Q(IVX,i,j,k)
+            U(IMY,i,j,k) = Q(IDN,i,j,k)*Q(IVY,i,j,k)
+            U(IMZ,i,j,k) = Q(IDN,i,j,k)*Q(IVZ,i,j,k)
             U(IEN,i,j,k) = 0.5d0*Q(IDN,i,j,k)*( Q(IVX,i,j,k)**2 + Q(IVY,i,j,k)**2 + Q(IVZ,i,j,k)**2 ) &
                        + 0.5d0*( Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 + Bc(3,i,j,k)**2 ) &
                        + Q(IPR,i,j,k)/(gam - 1.0d0)
@@ -426,7 +403,7 @@ integer::i,j,k
         enddo
       
 return
-end subroutine Prim2Consrv
+end subroutine PrIMYConsrv
 !-------------------------------------------------------------------
 !       Conservative variables ===> Primitive variables
 !       Input  : U
@@ -447,11 +424,11 @@ real(8) :: inv_d;
         do i=is,ie
             Q(IDN,i,j,k) = U(IDN,i,j,k)
             inv_d = 1.0d0/U(IDN,i,j,k)
-            Q(IVX,i,j,k) = U(IM1,i,j,k)*inv_d
-            Q(IVY,i,j,k) = U(IM2,i,j,k)*inv_d
-            Q(IVZ,i,j,k) = U(IM3,i,j,k)*inv_d
+            Q(IVX,i,j,k) = U(IMX,i,j,k)*inv_d
+            Q(IVY,i,j,k) = U(IMY,i,j,k)*inv_d
+            Q(IVZ,i,j,k) = U(IMZ,i,j,k)*inv_d
             Q(IPR,i,j,k) = ( U(IEN,i,j,k) &
-                        - 0.5d0*(U(IM1,i,j,k)**2 + U(IM2,i,j,k)**2 + U(IM3,i,j,k)**2)*inv_d  &
+                        - 0.5d0*(U(IMX,i,j,k)**2 + U(IMY,i,j,k)**2 + U(IMZ,i,j,k)**2)*inv_d  &
                         - 0.5d0*(Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 + Bc(3,i,j,k)**2) )*(gam-1.0d0)
         enddo
         enddo
@@ -623,9 +600,9 @@ real(8) :: wghtCT
                 call HLL(1,Ql(:,i,j,k),Qr(:,i,j,k),Bs(1,i,j,k),xf(i+1)-xf(i),flx,wghtCT)
         
                  F(1:NVAR,i,j,k)  = flx(1:NVAR)
-                 e3_xf(i,j,k) =  -flx(IB2)
-                 e2_xf(i,j,k) =  +flx(IB3)
-        
+                 e3_xf(i,j,k) =  -flx(IBY)
+                 e2_xf(i,j,k) =  +flx(IBZ)
+
 !                 if(flx(IDN).ne.flx(IDN)) then
 !                     print*,i,j,k,flx(IDN),Ql(i,j,k,IDN),Qr(i,j,k,IDN)
 !                 endif
@@ -643,8 +620,8 @@ real(8) :: wghtCT
                 call HLLD(1,Ql(:,i,j,k),Qr(:,i,j,k),Bs(1,i,j,k),xf(i+1)-xf(i),flx,wghtCT)
         
                  F(1:NVAR,i,j,k)  = flx(1:NVAR)
-                 e3_xf(i,j,k) =  -flx(IB2)
-                 e2_xf(i,j,k) =  +flx(IB3)
+                 e3_xf(i,j,k) =  -flx(IBY)
+                 e2_xf(i,j,k) =  +flx(IBZ)
 
 !                 if(flx(IDN).ne.flx(IDN)) then
 !                     print*,i,j,k,flx(IDN),Ql(i,j,k,IDN),Qr(i,j,k,IDN)
@@ -705,8 +682,8 @@ real(8) :: wghtCT
              call HLL(2,Ql(:,i,j,k),Qr(:,i,j,k),Bs(2,i,j,k),yf(j+1) - yf(j), flx,wghtCT)
     
              G(1:NVAR,i,j,k) = flx(1:NVAR)
-             e1_yf(i,j,k) =  - flx(IB3)
-             e3_yf(i,j,k) =    flx(IB1)
+             e1_yf(i,j,k) =  - flx(IBZ)
+             e3_yf(i,j,k) =    flx(IBX)
     
              weight2(i,j,k) = wghtCT
           enddo
@@ -722,8 +699,8 @@ real(8) :: wghtCT
 
     
              G(1:NVAR,i,j,k) = flx(1:NVAR)
-             e1_yf(i,j,k) =  - flx(IB3)
-             e3_yf(i,j,k) =    flx(IB1)
+             e1_yf(i,j,k) =  - flx(IBZ)
+             e3_yf(i,j,k) =    flx(IBX)
     
     
              weight2(i,j,k) = wghtCT
@@ -781,16 +758,16 @@ integer :: i, n
            IVpara  = IVX
            IVperp1 = IVY
            IVperp2 = IVZ
-           IBpara  = IB1
-           IBperp1 = IB2
-           IBperp2 = IB3
+           IBpara  = IBX
+           IBperp1 = IBY
+           IBperp2 = IBZ
       else if (idir == 2 ) then
            IVpara  = IVY
            IVperp1 = IVZ
            IVperp2 = IVX
-           IBpara  = IB2
-           IBperp1 = IB3
-           IBperp2 = IB1
+           IBpara  = IBY
+           IBperp1 = IBZ
+           IBperp2 = IBX
       endif
           
           pbl = 0.5d0*(b1**2 + Ql(IBperp1)**2 + Ql(IBperp2)**2)
@@ -922,16 +899,16 @@ integer :: i, n
            IVpara  = IVX
            IVperp1 = IVY
            IVperp2 = IVZ
-           IBpara  = IB1
-           IBperp1 = IB2
-           IBperp2 = IB3
+           IBpara  = IBX
+           IBperp1 = IBY
+           IBperp2 = IBZ
       else if (idir == 2 ) then
            IVpara  = IVY
            IVperp1 = IVZ
            IVperp2 = IVX
-           IBpara  = IB2
-           IBperp1 = IB3
-           IBperp2 = IB1
+           IBpara  = IBY
+           IBperp1 = IBZ
+           IBperp2 = IBX
       endif
           
           pbl = 0.5d0*(b1**2 + Ql(IBperp1)**2 + Ql(IBperp2)**2)
@@ -1224,34 +1201,21 @@ real(8), intent(in)  :: F(:,:,:,:), G(:,:,:,:), H(:,:,:,:)
 real(8), intent(in)  :: Uo(:,:,:,:), Q(:,:,:,:), Bso(:,:,:,:)
 real(8), intent(out) :: U(:,:,:,:), Bs(:,:,:,:), E(:,:,:,:)
 
-real(8) :: src 
+real(8) :: divB 
 integer::i,n,j,k
 
 !$omp parallel 
 
+      !$omp do private( i,j,k )
       do k=ks,ke
-      !$omp do private( i,j )
       do j=js,je
       do i=is,ie
          U(:,i,j,k) = Uo(:,i,j,k) + dt1*(- F(:,i+1,j,k) + F(:,i,j,k))/(xf(i+1)-xf(i)) &
                                   + dt1*(- G(:,i,j+1,k) + G(:,i,j,k))/(yf(j+1)-yf(j)) 
       enddo
       enddo
-      !$omp end do
-      enddo
-
-      ! Source term
-      do k=ks,ke
-      !$omp do private( i, src )
-      do j=js,je
-      do i=is,ie
-         src = dt1*Q(IDN,i,j,k)*grav_accy
-         U(IM2,i,j,k) = U(IM2,i,j,k) + src
-         U(IEN,i,j,k) = U(IEN,i,j,k) + src*Q(IVY,i,j,k)
-      enddo
       enddo
       !$omp end do
-      enddo
 
       do k=ks,ke
       !$omp do private( i )
@@ -1338,7 +1302,7 @@ integer, save :: nsnap = 0
           do j=js,je
           do i=is,ie
               write(unitbin,*) xv(i), yv(j), Q(IDN,i,j,k), Q(IVX,i,j,k), Q(IVY,i,j,k), Q(IVZ,i,j,k), Q(IPR,i,j,k), &
-                  Bc(1,i,j,k), Bc(2,i,j,k), Bc(3,i,j,k)
+                  Bc(1,i,j,k), Bc(2,i,j,k), Bc(3,i,j,k), Q(ISC,i,j,k)
           enddo
           enddo
           enddo
@@ -1351,86 +1315,42 @@ integer, save :: nsnap = 0
       nsnap=nsnap+1
       tsnap=tsnap + dtsnap
 
-      return
-      end subroutine Output
-
-      subroutine makedirs(outdir)
-      implicit none
-      character(len=*), intent(in) :: outdir
-      character(len=256) command
-      write(command, *) 'if [ ! -d ', trim(outdir), ' ]; then mkdir -p ', trim(outdir), '; fi'
+return
+end subroutine Output
+!-------------------------------------------------------------------
+!       create directory
+!       Input  : the directory to be created
+!-------------------------------------------------------------------
+subroutine makedirs(outdir)
+implicit none
+character(len=*), intent(in) :: outdir
+character(len=256) command
+write(command, *) 'if [ ! -d ', trim(outdir), ' ]; then mkdir -p ', trim(outdir), '; fi'
 !      write(*, *) trim(command)
-      call system(command)
-      end subroutine makedirs
-
-      real(8) function errorBpara(Q)
-      implicit none
-      real(8), intent(in) :: Q(:,:,:,:)
-      integer::i,j,k
-      real(8) :: error
-
-      do k=ks,ke
-      do j=js,je
-      do i=is,ie
-         error = dabs( ( Q(i,j,k,IB1) + 2.0d0*Q(i,j,k,IB2) )/sqrt(5.0d0) - 5.0d0/dsqrt(4.0d0*dacos(-1.0d0)))
-
-         errorBpara = errorBpara + error
-      enddo
-      enddo
-      enddo
-      errorBpara = errorBpara/dble((ie-is+1)*(je-js+1)*(ke-ks+1))
-      
-      return
-      end function
-
-      real(8) function divergenceB(xf, yf, Bc)
-      implicit none
-      real(8), intent(in) :: xf(:), yf(:), Bc(:,:,:,:)
-      integer::i,j,k
-      real(8) :: error
+call system(command)
+end subroutine makedirs
+!-------------------------------------------------------------------
+!       Realtime Analysis
+!       Input  : xf, xv
+!       Output : phys_evo(nevo)
+!-------------------------------------------------------------------
+subroutine RealtimeAnalysis(xv,yv,Q,Bc,Bs,phys_evo)
+real(8), intent(in) :: xv(:), yv(:), Q(:,:,:,:), Bc(:,:,:,:), Bs(:,:,:,:)
+real(8), intent(out) :: phys_evo(:)
+integer::i,j,k
+real(8) :: dvy, er_divBc, er_divBs
 
       do k=ks,ke
       do j=js,je
       do i=is,ie
-         error = dabs( ( Bc(1,i+1,j,k) - Bc(1,i-1,j,k) )/(xf(i+1)-xf(i-1))  &
-                    + ( Bc(2,i,j+1,k) - Bc(2,i,j-1,k) )/(yf(j+1)-yf(j-1)) )/ &
-                    dsqrt( Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 )*min(xf(i+1) - xf(i),yf(j+1)-yf(j))
-
-         divergenceB = divergenceB + error
       enddo
       enddo
       enddo
-      divergenceB = divergenceB/dble((ie-is+1)*(je-js+1)*(ke-ks+1))
+      phys_evo(1) = 0.0d0
+      phys_evo(2) = 0.0d0
+      phys_evo(3) = 0.0d0
       
-      return
-      end function
-
-
-      subroutine Analysis(xv,yv,Q,Bc,Bs,phys_evo)
-      real(8), intent(in) :: xv(:), yv(:), Q(:,:,:,:), Bc(:,:,:,:), Bs(:,:,:,:)
-      real(8), intent(out) :: phys_evo(:)
-      integer::i,j,k
-      real(8) :: dvx, er_divBc, er_divBs
-
-      dvx = 0.0d0
-      er_divBc = 0.0d0
-      er_divBs = 0.0d0
-      do k=ks,ke
-      do j=js,je
-      do i=is,ie
-           dvx = dvx + Q(IVx,i,j,k)**2
-           er_divBs = er_divBs + ( Bs(1,i+1,j,k) - Bs(1,i,j,k) + Bs(2,i,j+1,k) - Bs(2,i,j,k) )**2 &
-                       /( Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 )
-           er_divBc = er_divBc + 0.5d0*( Bc(1,i+1,j,k) - Bc(1,i-1,j,k) + Bc(2,i,j+1,k) - Bc(2,i,j-1,k) )**2 &
-                                       /( Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 )
-      enddo
-      enddo
-      enddo
-      phys_evo(1) = sqrt(dvx/dble(nx*ny))
-      phys_evo(2) = sqrt(er_divBc/dble(nx*ny))
-      phys_evo(3) = sqrt(er_divBs/dble(nx*ny))
-      
-      return
-      end subroutine
+return
+end subroutine RealtimeAnalysis
 
 end program main
