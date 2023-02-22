@@ -1,7 +1,12 @@
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import re
+
+dirname = sys.argv[1]
+step_s = int(sys.argv[2])
+step_e = int(sys.argv[3])
 
 fig = plt.figure()  
 plt.xlim(0, 1)     
@@ -14,17 +19,11 @@ xmax =  0.25
 ymin = -0.75
 ymax =  0.75
 
-dirname = "snap_B0.5_nohdc"
-base = "rt"
-suffix = ".dat"
 fname_anime = "animation.mp4"
-
-step_s = 1
-step_e = 30
 
 graph_list = [] 
 for istep in range(step_s,step_e+1):
-    foutname = dirname + "/" + base + "%05d"%(istep) + suffix
+    foutname = dirname + "/snap%05d.dat"%(istep) 
     print("making plot ",foutname)
     with open(foutname, 'r') as data_file:
         line = data_file.readline();
