@@ -9,6 +9,6 @@ cd $PBS_O_WORKDIR
 
 export OMP_NUM_THREADS=8
 
-logfile=$(date +log.%Y-%m-%d-%H:%M:%S)
+logfile=$(date +log.%Y-%m-%d-%H%M%S)
 
 ./a.out >& $logfile
