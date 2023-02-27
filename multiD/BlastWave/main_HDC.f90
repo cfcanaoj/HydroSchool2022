@@ -9,7 +9,7 @@ real(8) :: dt   = 0.0d0  ! time width
 real(8),parameter:: timemax=0.15d0 ! simulation end time
 
 ! option
-integer, parameter :: flag_HDC = 1 ! 1 --> HDC on , 0 --> HDC off
+integer, parameter :: flag_HDC = 0 ! 1 --> HDC on , 0 --> HDC off
 integer, parameter :: flag_flux = 2 ! 1 (HLL), 2 (HLLD)
 
 ! coordinate 
@@ -69,12 +69,13 @@ real(8),dimension(NVAR,nxtot,nytot,nztot) :: G
 real(8),dimension(NVAR,nxtot,nytot,nztot) :: H
 
 ! output 
-character(20),parameter::dirname="hdc" ! directory name
+character(20),parameter::dirname="nohdc" ! directory name
 
 ! snapshot
 integer, parameter :: unitsnap = 17
 real(8), parameter:: dtsnap=0.5d-2
-logical :: flag_binary = .true.
+!logical :: flag_binary = .true.
+logical :: flag_binary = .false.
 
 ! realtime analysis 
 integer, parameter :: nevo = 2
@@ -951,10 +952,12 @@ integer, save :: nsnap
         write(unitsnap) time
         write(unitsnap) nx
         write(unitsnap) ny
-        write(unitsnap) NVAR
+        write(unitsnap) 5
+        write(unitsnap) NVAR - 5
         write(unitsnap) xv(is:ie)
         write(unitsnap) yv(js:je)
-        write(unitsnap) real(Q(1:NVAR,is:ie,js:je,ks:ke)) ! single precision
+        write(unitsnap) real(Q(1:5,is:ie,js:je,ks:ke)) ! single precision
+        write(unitsnap) real(Q(6:NVAR,is:ie,js:je,ks:ke)) ! single precision
         close(unitsnap)
     else 
         filename = trim(dirname)//"/snap"//trim(filename)//".dat"

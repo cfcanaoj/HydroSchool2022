@@ -29,19 +29,22 @@ for istep in range(step_s,step_e+1):
     time = np.fromfile(fp,np.float64,1)[0]
     nx   = np.fromfile(fp,np.int32,1)[0]
     ny   = np.fromfile(fp,np.int32,1)[0]
-    nvar = np.fromfile(fp,np.int32,1)[0]
+    nhyd = np.fromfile(fp,np.int32,1)[0]
+    nbc  = np.fromfile(fp,np.int32,1)[0]
     xv   = np.fromfile(fp,np.float64,nx)
     yv   = np.fromfile(fp,np.float64,ny)
-    Q    = np.fromfile(fp,np.float32,nx*ny*nvar).reshape(ny,nx,nvar)
-
-    den = Q[:,:,0]
+    Q    = np.fromfile(fp,np.float32,nx*ny*nhyd).reshape(ny,nx,nhyd)
+    Bc   = np.fromfile(fp,np.float32,nx*ny*nbc).reshape(ny,nx,nbc)
 
     plt.xlim(xmin,xmax)
     plt.ylim(ymin,ymax)
 
-    pg00 = plt.text(0.5*(xmin+xmax),ymax*1.1,r"$\mathrm{time}=%.2f$"%(time),horizontalalignment="center")
+    den = Q[:,:,0]
 
-    im=plt.imshow(den[:,:],extent=(xmin,xmax,ymin,ymax),origin="lower",vmin=0,vmax=1)
+    pg00 = plt.text(0.5*(xmin+xmax),ymax*1.1,r"$\mathrm{time}=%.3f$"%(time),horizontalalignment="center")
+
+    im=plt.imshow(den[:,:],extent=(xmin,xmax,ymin,ymax),origin="lower",vmin=0,vmax=3)
+
 
     if istep == step_s: 
         plt.colorbar(im,orientation="vertical")

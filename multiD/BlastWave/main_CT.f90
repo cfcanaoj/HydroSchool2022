@@ -81,7 +81,8 @@ integer, parameter :: unitevo =11
 integer, parameter :: unitbin =13
 real(8) :: phys_evo(nevo)
 
-logical :: flag_binary = .false.
+logical :: flag_binary = .true.
+!logical :: flag_binary = .false.
 
 integer :: i,j,k
 
@@ -180,10 +181,8 @@ real(8), intent(out) :: Bs(:,:,:,:)
 real(8), intent(out) :: Bc(:,:,:,:)
 real(8) :: pi, B0
 
-    B0 = 10.0d0
-
+    B0 = 10d0
     pi = dacos(-1.0d0)
-
 
     do k=ks,ke
     do j=js,je
@@ -1292,12 +1291,12 @@ integer, save :: nsnap = 0
         write(unitsnap) time
         write(unitsnap) nx
         write(unitsnap) ny
-        write(unitsnap) NFLX
+        write(unitsnap) NVAR
+        write(unitsnap) NFLX-NVAR
         write(unitsnap) xv(is:ie)
         write(unitsnap) yv(js:je)
-        write(unitsnap) real(Q(1:5,is:ie,js:je,ks:ke)) ! single precision
+        write(unitsnap) real(Q(1:NVAR,is:ie,js:je,ks:ke)) ! single precision
         write(unitsnap) real(Bc(1:3,is:ie,js:je,ks:ke)) ! single precision
-        write(unitsnap) real(Q(6,is:ie,js:je,ks:ke)) ! scalar field
         close(unitsnap)
     else 
           filename = trim(dirname)//"/snap"//trim(filename)//".dat"

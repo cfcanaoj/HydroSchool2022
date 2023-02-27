@@ -55,7 +55,7 @@ for istep in range(step_s,step_e+1):
 
     pg00 = plt.text(0.5*(xmin+xmax),ymax*1.1,r"$\mathrm{time}=%.2f$"%(time),horizontalalignment="center")
 
-    im=plt.imshow(den[:,:],extent=(xmin,xmax,ymin,ymax),origin="lower",vmin=0,vmax=1)
+    im=plt.imshow(den[:,:],extent=(xmin,xmax,ymin,ymax),origin="lower",vmin=0,vmax=3)
 
     if istep == step_s: 
         plt.colorbar(im,orientation="vertical")
