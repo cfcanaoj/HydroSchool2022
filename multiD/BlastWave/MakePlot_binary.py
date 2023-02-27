@@ -45,7 +45,7 @@ for j in range(0,ny):
 
 den = Q[:,:,0]
 
-xx, yy = np.meshgrid(xv,yv,indexing="ij")
+yy, xx = np.meshgrid(yv,xv,indexing="ij")
 
 print(den)
 
