@@ -82,7 +82,8 @@ integer, parameter :: unitevo =11
 integer, parameter :: unitbin =13
 real(8) :: phys_evo(nevo)
 
-logical :: flag_binary = .false.
+!logical :: flag_binary = .false.
+logical :: flag_binary = .true.
 
 integer :: i,j,k
 
@@ -179,28 +180,37 @@ real(8), intent(in ) :: xv(:), yv(:), zv(:)
 real(8), intent(out) :: Q(:,:,:,:)
 real(8), intent(out) :: Bs(:,:,:,:)
 real(8), intent(out) :: Bc(:,:,:,:)
-real(8) :: pi
+real(8) :: pi, den, B0, rho1, rho2, dv, wid, v1, v2, sig
 
     pi = dacos(-1.0d0)
 
+    rho1 = 1.0d0
+    rho2 = 1.0d0
+    dv   = 2.00d0
+    wid  = 0.05d0
+    sig  = 0.2d0
+!    B0  = 0.0d0*dsqrt( dv**2*0.5d0*rho1*rho2/(rho1+rho2))
+    B0  = sqrt(2.0d0/3.0d0)
 
     do k=ks,ke
     do j=js,je
     do i=is,ie
-        Q(IDN,i,j,k) = 1.0d0 
-        Q(IVX,i,j,k) = 0.0
-        Q(IVY,i,j,k) = 0.0
+        Q(IDN,i,j,k) = 1.0d0 !+ 0.5d0*( dtanh( (yv(j)+0.25d0)/wid ) - tanh( (yv(j)-0.25d0)/wid) )
+        Q(IVX,i,j,k)  = 0.5*dv*( dtanh( (yv(j)+0.5d0)/wid ) - dtanh( (yv(j) - 0.5d0)/wid ) - 1.0d0 )
+        Q(IVY,i,j,k)  = 0.001d0*dsin(2.0d0*pi*xv(i))* &
+             ( dexp( - (yv(j) + 0.5d0)**2/sig**2 ) +  &
+               dexp( - (yv(j) - 0.5d0)**2/sig**2 ) )
         Q(IPR,i,j,k) = 1.0d0
-        Q(ISC,i,j,k) = 0.0d0
-    enddo
-    enddo
-    enddo
 
+        Q(ISC,i,j,k) = 0.5d0*( dtanh( (yv(j)+0.5d0)/wid ) - tanh( (yv(j)-0.5d0)/wid) )
+    enddo
+    enddo
+    enddo
 
     do k=ks,ke
     do j=js,je
     do i=is,ie+1
-        Bs(1,i,j,k) = 0.0d0
+        Bs(1,i,j,k) = B0
     enddo
     enddo
     enddo
@@ -222,6 +232,7 @@ real(8) :: pi
     enddo
 
     call CellCenterMagneticField(is, ie, js, je, ks, ke, Bs, Bc)
+
 
 
 return
@@ -1304,12 +1315,13 @@ integer, save :: nsnap = 0
         write(unitsnap) time
         write(unitsnap) nx
         write(unitsnap) ny
-        write(unitsnap) NFLX
+        write(unitsnap) NVAR
+        write(unitsnap) NFLX-NVAR
         write(unitsnap) xv(is:ie)
         write(unitsnap) yv(js:je)
-        write(unitsnap) real(Q(1:5,is:ie,js:je,ks:ke)) ! single precision
+        write(unitsnap) real(Q(1:NVAR,is:ie,js:je,ks:ke)) ! single precision
         write(unitsnap) real(Bc(1:3,is:ie,js:je,ks:ke)) ! single precision
-        write(unitsnap) real(Q(6,is:ie,js:je,ks:ke)) ! scalar field
+!        write(unitsnap) real(Q(6,is:ie,js:je,ks:ke)) ! scalar field
         close(unitsnap)
     else 
           filename = trim(dirname)//"/snap"//trim(filename)//".dat"
@@ -1358,15 +1370,23 @@ real(8), intent(out) :: phys_evo(:)
 integer::i,j,k
 real(8) :: dvy, er_divBc, er_divBs
 
+      dvy = 0.0d0
+      er_divBc = 0.0d0
+      er_divBs = 0.0d0
       do k=ks,ke
       do j=js,je
       do i=is,ie
+           dvy = dvy + Q(IVY,i,j,k)**2
+           er_divBs = er_divBs + ( Bs(1,i+1,j,k) - Bs(1,i,j,k) + Bs(2,i,j+1,k) - Bs(2,i,j,k) )**2 &
+                       /( Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 )
+           er_divBc = er_divBc + 0.5d0*( Bc(1,i+1,j,k) - Bc(1,i-1,j,k) + Bc(2,i,j+1,k) - Bc(2,i,j-1,k) )**2 &
+                                       /( Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 )
       enddo
       enddo
       enddo
-      phys_evo(1) = 0.0d0
-      phys_evo(2) = 0.0d0
-      phys_evo(3) = 0.0d0
+      phys_evo(1) = sqrt(dvy/dble(nx*ny))
+      phys_evo(2) = sqrt(er_divBc/dble(nx*ny))
+      phys_evo(3) = sqrt(er_divBs/dble(nx*ny))
       
 return
 end subroutine RealtimeAnalysis

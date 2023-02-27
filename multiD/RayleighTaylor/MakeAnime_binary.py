@@ -9,15 +9,13 @@ step_s = int(sys.argv[2])
 step_e = int(sys.argv[3])
 
 fig = plt.figure()  
-plt.xlim(0, 1)     
-plt.ylim(0, 1)
 plt.xlabel("x axis") 
 plt.ylabel("y axis") 
 
-xmin = -0.5
-xmax =  0.5
-ymin = -1.0
-ymax =  1.0
+xmin = -0.25
+xmax =  0.25
+ymin = -0.75
+ymax =  0.75
 
 fname_anime = "animation.mp4"
 
@@ -29,24 +27,26 @@ for istep in range(step_s,step_e+1):
     time = np.fromfile(fp,np.float64,1)[0]
     nx   = np.fromfile(fp,np.int32,1)[0]
     ny   = np.fromfile(fp,np.int32,1)[0]
-    nvar = np.fromfile(fp,np.int32,1)[0]
+    nhyd = np.fromfile(fp,np.int32,1)[0]
+    nbc  = np.fromfile(fp,np.int32,1)[0]
     xv   = np.fromfile(fp,np.float64,nx)
     yv   = np.fromfile(fp,np.float64,ny)
-    Q    = np.fromfile(fp,np.float32,nx*ny*nvar).reshape(ny,nx,nvar)
-
-    sca = Q[:,:,8]
+    Q    = np.fromfile(fp,np.float32,nx*ny*nhyd).reshape(ny,nx,nhyd)
+    Bc   = np.fromfile(fp,np.float32,nx*ny*nbc).reshape(ny,nx,nbc)
 
     plt.xlim(xmin,xmax)
     plt.ylim(ymin,ymax)
 
-    pg00 = plt.text(0.5*(xmin+xmax),ymax*1.1,r"$\mathrm{time}=%.2f$"%(time),horizontalalignment="center")
+    den = Q[:,:,0]
 
-    im=plt.imshow(sca[:,:],extent=(xmin,xmax,ymin,ymax),origin="lower",vmin=0,vmax=1)
+    pg00 = plt.text(0.5*(xmin+xmax),ymax*1.1,r"$\mathrm{time}=%.3f$"%(time),horizontalalignment="center")
+
+    im=plt.imshow(den[:,:],extent=(xmin,xmax,ymin,ymax),origin="lower",vmin=1,vmax=2)
+
 
     if istep == step_s: 
         plt.colorbar(im,orientation="vertical")
     graph_list.append([pg00,im])               
-
 
 ani = animation.ArtistAnimation(fig, graph_list, interval=200) 
 print("making animation file", fname_anime)

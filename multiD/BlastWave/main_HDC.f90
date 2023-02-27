@@ -9,7 +9,7 @@ real(8) :: dt   = 0.0d0  ! time width
 real(8),parameter:: timemax=0.15d0 ! simulation end time
 
 ! option
-integer, parameter :: flag_HDC = 0 ! 1 --> HDC on , 0 --> HDC off
+integer, parameter :: flag_HDC = 1 ! 1 --> HDC on , 0 --> HDC off
 integer, parameter :: flag_flux = 2 ! 1 (HLL), 2 (HLLD)
 
 ! coordinate 
@@ -69,7 +69,7 @@ real(8),dimension(NVAR,nxtot,nytot,nztot) :: G
 real(8),dimension(NVAR,nxtot,nytot,nztot) :: H
 
 ! output 
-character(20),parameter::dirname="nohdc" ! directory name
+character(20),parameter::dirname="hdc" ! directory name
 
 ! snapshot
 integer, parameter :: unitsnap = 17

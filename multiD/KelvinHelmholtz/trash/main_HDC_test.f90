@@ -10,10 +10,10 @@ real(8),parameter:: timemax=20.0d0
 real(8),parameter:: dtout=0.1d0
 
 integer, parameter :: flag_HDC = 1 ! 1 --> HDC on , 0 --> HDC off
-integer, parameter :: flag_flux = 3 ! 1 (HLL), 2 (HLLC), 3 (HLLD)
+integer, parameter :: flag_flux = 1 ! 1 (HLL), 2 (HLLC), 3 (HLLD)
 
-integer,parameter::nx=128*2*1        ! the number of grids in the simulation box
-integer,parameter::ny=128*2*1 ! the number of grids in the simulation box
+integer,parameter::nx=128*1*1        ! the number of grids in the simulation box
+integer,parameter::ny=128*1*1 ! the number of grids in the simulation box
 integer,parameter::nz=1          ! the number of grids in the simulation box
 integer,parameter::ngh=2         ! the number of ghost cells
 integer,parameter::nxtot=nx+2*ngh+1 ! the total number of grids including ghost cells
@@ -114,8 +114,7 @@ integer :: i, j,k
              call flush(unitevo)
          endif
 
-         if(time >= timemax) exit mloop
-         if(ntime .eq. 100 )exit
+         if( time >= timemax ) exit
       enddo mloop
       print*,omp_get_wtime() - stime
 

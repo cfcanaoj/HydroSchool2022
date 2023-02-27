@@ -70,7 +70,7 @@ real(8),dimension(NVAR,nxtot,nytot,nztot) :: H
 real(8),dimension(3,nxtot,nytot,nztot) :: E 
 
 ! output 
-character(20),parameter::dirname="hlld_ct" ! directory name
+character(20),parameter::dirname="ct" ! directory name
 
 ! snapshot
 integer, parameter :: unitsnap = 17
@@ -82,7 +82,8 @@ integer, parameter :: unitevo =11
 integer, parameter :: unitbin =13
 real(8) :: phys_evo(nevo)
 
-logical :: flag_binary = .false.
+!logical :: flag_binary = .false.
+logical :: flag_binary = .true.
 
 integer :: i,j,k
 
@@ -181,44 +182,53 @@ real(8), intent(out) :: Bs(:,:,:,:)
 real(8), intent(out) :: Bc(:,:,:,:)
 real(8) :: pi, den, B0, rho1, rho2, dv, wid, v1, v2, sig
 
-      pi = dacos(-1.0d0)
-      B0 = 0.0d0
+      pi = acos(-1.0d0)
+      B0 = 0.5d0*sqrt( abs(grav_accy)/(2.0*2.0d0*pi) )
 
       do k=ks,ke
       do j=js,je
       do i=is,ie
-           Q(IDN,i,j,k) = 1.0d0
+           if( yv(j) .lt. 0.0d0 ) then
+               den = 1.0d0
+           else 
+               den = 2.0d0
+           endif
+           Q(IDN,i,j,k) = den
            Q(IVX,i,j,k) = 0.0d0
            Q(IVY,i,j,k) = 0.0d0
            Q(IVZ,i,j,k) = 0.0d0
-           Q(IPR,i,j,k) = 1.0d0
+           Q(IPR,i,j,k) = 2.5d0 + grav_accy*den*yv(j)
+
+           Q(IVY,i,j,k)= 0.01d0/4.0d0 &
+                     & *(-dcos(2.0d0*pi*(xv(i)-(xmax+xmin)/2.0d0)/(xmax-xmin))) &
+                     & *(1.0+cos(2.0d0*pi*(yv(j)-(ymax+ymin)/2.0d0)/(ymax-ymin)))
       enddo
       enddo
       enddo
 
-    do k=ks,ke
-    do j=js,je
-    do i=is,ie+1
-        Bs(1,i,j,k) = B0
-    enddo
-    enddo
-    enddo
+      do k=ks,ke
+      do j=js,je
+      do i=is,ie+1
+          Bs(1,i,j,k) = B0
+      enddo
+      enddo
+      enddo
 
-    do k=ks,ke
-    do j=js,je+1
-    do i=is,ie
-        Bs(2,i,j,k) = 0.0d0
-    enddo
-    enddo
-    enddo
+      do k=ks,ke
+      do j=js,je+1
+      do i=is,ie
+          Bs(2,i,j,k) = 0.0d0
+      enddo
+      enddo
+      enddo
 
-    do k=ks,ke+1
-    do j=js,je
-    do i=is,ie
-        Bs(3,i,j,k) = 0.0d0
-    enddo
-    enddo
-    enddo
+      do k=ks,ke+1
+      do j=js,je
+      do i=is,ie
+          Bs(3,i,j,k) = 0.0d0
+      enddo
+      enddo
+      enddo
 
     call CellCenterMagneticField(is, ie, js, je, ks, ke, Bs, Bc)
 
@@ -1310,12 +1320,12 @@ integer, save :: nsnap = 0
         write(unitsnap) time
         write(unitsnap) nx
         write(unitsnap) ny
-        write(unitsnap) NFLX
+        write(unitsnap) NVAR
+        write(unitsnap) NFLX-NVAR
         write(unitsnap) xv(is:ie)
         write(unitsnap) yv(js:je)
-        write(unitsnap) real(Q(1:5,is:ie,js:je,ks:ke)) ! single precision
+        write(unitsnap) real(Q(1:NVAR,is:ie,js:je,ks:ke)) ! single precision
         write(unitsnap) real(Bc(1:3,is:ie,js:je,ks:ke)) ! single precision
-        write(unitsnap) real(Q(6,is:ie,js:je,ks:ke)) ! scalar field
         close(unitsnap)
     else 
           filename = trim(dirname)//"/snap"//trim(filename)//".dat"
@@ -1361,17 +1371,25 @@ end subroutine makedirs
 subroutine Analysis(xv,yv,Q,Bc,Bs,phys_evo)
 real(8), intent(in) :: xv(:), yv(:), Q(:,:,:,:), Bc(:,:,:,:), Bs(:,:,:,:)
 real(8), intent(out) :: phys_evo(:)
-integer::i,j,k
+real(8) :: dvx, er_divBc, er_divBs
 
+      dvx = 0.0d0
+      er_divBc = 0.0d0
+      er_divBs = 0.0d0
       do k=ks,ke
       do j=js,je
       do i=is,ie
+           dvx = dvx + Q(IVX,i,j,k)**2
+           er_divBs = er_divBs + ( Bs(1,i+1,j,k) - Bs(1,i,j,k) + Bs(2,i,j+1,k) - Bs(2,i,j,k) )**2 &
+                       /( Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 )
+           er_divBc = er_divBc + 0.5d0*( Bc(1,i+1,j,k) - Bc(1,i-1,j,k) + Bc(2,i,j+1,k) - Bc(2,i,j-1,k) )**2 &
+                                       /( Bc(1,i,j,k)**2 + Bc(2,i,j,k)**2 )
       enddo
       enddo
       enddo
-      phys_evo(1) = 0.0d0
-      phys_evo(2) = 0.0d0
-      phys_evo(3) = 0.0d0
+      phys_evo(1) = sqrt(dvx/dble(nx*ny))
+      phys_evo(2) = sqrt(er_divBc/dble(nx*ny))
+      phys_evo(3) = sqrt(er_divBs/dble(nx*ny))
       
 return
 end subroutine

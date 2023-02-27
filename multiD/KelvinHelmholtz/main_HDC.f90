@@ -42,10 +42,10 @@ integer, parameter :: IMX = 2
 integer, parameter :: IMY = 3
 integer, parameter :: IMZ = 4
 integer, parameter :: IPR = 5
-integer, parameter :: IBX = 6
-integer, parameter :: IBY = 7
-integer, parameter :: IBZ = 8
-integer, parameter :: ISC = 9
+integer, parameter :: ISC = 6
+integer, parameter :: IBX = 7
+integer, parameter :: IBY = 8
+integer, parameter :: IBZ = 9
 integer, parameter :: IPS = 10
 integer, parameter :: NVAR = 10
 integer, parameter :: NFLX = 10
@@ -75,7 +75,7 @@ character(20),parameter::dirname="hlld" ! directory name
 ! snapshot
 integer, parameter :: unitsnap = 17
 real(8), parameter:: dtsnap=2.0d-1
-logical :: flag_binary = .false.
+logical :: flag_binary = .true.
 
 ! realtime analysis 
 integer, parameter :: nevo = 2
@@ -180,20 +180,28 @@ real(8) :: pi, den, B0, rho1, rho2, dv, wid, sig
 
       pi = dacos(-1.0d0)
 
+      rho1 = 1.0d0
+      rho2 = 1.0d0
+      dv   = 2.00d0
+      wid  = 0.05d0
+      sig  = 0.2d0
+      B0  = dsqrt(2.0d0/3.0d0)
+
       do k=ks,ke
       do j=js,je
       do i=is,ie
-         Q(IDN,i,j,k)  = 1.0d0 
-         Q(IVX,i,j,k)  = 0.0d0
-         Q(IVY,i,j,k)  = 0.0d0
-         Q(IVZ,i,j,k)  = 0.0d0
+         Q(IDN,i,j,k) = 1.0d0 !+ 0.5d0*( dtanh( (yv(j)+0.25d0)/wid ) - tanh( (yv(j)-0.25d0)/wid) )
+         Q(IVX,i,j,k)  = 0.5*dv*( dtanh( (yv(j)+0.5d0)/wid ) - dtanh( (yv(j) - 0.5d0)/wid ) - 1.0d0 )
+         Q(IVY,i,j,k)  = 0.001d0*dsin(2.0d0*pi*xv(i))* &
+             ( dexp( - (yv(j) + 0.5d0)**2/sig**2 ) +  &
+               dexp( - (yv(j) - 0.5d0)**2/sig**2 ) )
          Q(IPR,i,j,k) = 1.0d0
-         Q(IBX,i,j,k) = 0.0d0
+         Q(IBX,i,j,k) = B0
          Q(IBY,i,j,k) = 0.0d0
          Q(IBZ,i,j,k) = 0.0d0
-         Q(IPS,i,j,k) = 0.0d0 !(0のままにしておいて下さい)
+         Q(IPS,i,j,k) = 0.0d0
 
-         Q(ISC,i,j,k) = 0.0d0
+         Q(ISC,i,j,k) = 0.5d0*( dtanh( (yv(j)+0.5d0)/wid ) - tanh( (yv(j)-0.5d0)/wid) )
       enddo
       enddo
       enddo
@@ -953,10 +961,12 @@ integer, save :: nsnap
         write(unitsnap) time
         write(unitsnap) nx
         write(unitsnap) ny
-        write(unitsnap) NVAR
+        write(unitsnap) 6
+        write(unitsnap) 3
         write(unitsnap) xv(is:ie)
         write(unitsnap) yv(js:je)
-        write(unitsnap) real(Q(1:NVAR,is:ie,js:je,ks:ke)) ! single precision
+        write(unitsnap) real(Q(1:6,is:ie,js:je,ks:ke)) ! single precision ! hydro
+        write(unitsnap) real(Q(7:9,is:ie,js:je,ks:ke)) ! single precision ! Bfield
         close(unitsnap)
     else 
         filename = trim(dirname)//"/snap"//trim(filename)//".dat"
@@ -1004,15 +1014,22 @@ implicit none
 real(8), intent(in) :: xv(:), yv(:), Q(:,:,:,:)
 real(8), intent(out) :: phys_evo(:)
 integer::i,j,k
+real(8) :: dvy, er_divB
 
+      dvy = 0.0d0
+      er_divB = 0.0d0
       do k=ks,ke
       do j=js,je
       do i=is,ie
+           dvy = dvy + Q(IVY,i,j,k)**2
+           er_divB = er_divB + ( Q(IBX,i+1,j,k) - Q(IBX,i-1,j,k) + Q(IBY,i,j+1,k) - Q(IBY,i,j-1,k) )**2 &
+                       /( Q(IBX,i,j,k)**2 + Q(IBY,i,j,k)**2 )
       enddo
       enddo
       enddo
-      phys_evo(1) = 0.0d0
-      phys_evo(2) = 0.0d0
+      phys_evo(1) = sqrt(dvy/dble(nx*ny))
+      phys_evo(2) = sqrt(er_divB/dble(nx*ny))
+
       
 return
 end subroutine

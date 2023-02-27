@@ -9,7 +9,7 @@ real(8) :: dt   = 0.0d0  ! time width
 real(8),parameter:: timemax=25.0d0 ! simulation end time
 
 ! option
-integer, parameter :: flag_HDC = 1 ! 1 --> HDC on , 0 --> HDC off
+integer, parameter :: flag_HDC = 0 ! 1 --> HDC on , 0 --> HDC off
 integer, parameter :: flag_flux = 2 ! 1 (HLL), 2 (HLLD)
 
 ! coordinate 
@@ -72,7 +72,7 @@ real(8),dimension(NVAR,nxtot,nytot,nztot) :: G
 real(8),dimension(NVAR,nxtot,nytot,nztot) :: H
 
 ! output 
-character(20),parameter::dirname="hlld" ! directory name
+character(20),parameter::dirname="nohdc" ! directory name
 
 ! snapshot
 integer, parameter :: unitsnap = 17
@@ -83,7 +83,8 @@ integer, parameter :: nevo = 2
 integer, parameter :: unitevo =11
 real(8) :: phys_evo(nevo)
 
-logical :: flag_binary = .False.
+!logical :: flag_binary = .False.
+logical :: flag_binary = .true.
 
 
 integer :: i, j,k
@@ -180,23 +181,33 @@ implicit none
 integer::i, j, k
 real(8), intent(in ) :: xv(:), yv(:), zv(:)
 real(8), intent(out) :: Q(:,:,:,:)
-real(8) :: pi, den, B0, rho1, rho2, dv, wid, sig
+real(8) :: pi, den, B0
 
       pi = dacos(-1.0d0)
-      B0 = 0.0d0*sqrt( abs(grav_accy)/(2.0*2.0d0*pi) )
+      B0 = 0.5d0*sqrt( abs(grav_accy)/(2.0*2.0d0*pi) )
 
       do k=ks,ke
       do j=js,je
       do i=is,ie
-           Q(IDN,i,j,k) = 1.0d0
+           if( yv(j) .lt. 0.0d0 ) then
+               den = 1.0d0
+           else 
+               den = 2.0d0
+           endif
+           Q(IDN,i,j,k) = den
            Q(IVX,i,j,k) = 0.0d0
            Q(IVY,i,j,k) = 0.0d0
            Q(IVZ,i,j,k) = 0.0d0
-           Q(IBX,i,j,k) = 0.0d0
+           Q(IBX,i,j,k) = B0 
            Q(IBY,i,j,k) = 0.0d0
            Q(IBZ,i,j,k) = 0.0d0
-           Q(IPR,i,j,k) = 1.0d0
+           Q(IPR,i,j,k) = 2.5d0 + grav_accy*den*yv(j)
 
+           Q(IVY,i,j,k)= 0.01d0/4.0d0 &
+                     & *(-dcos(2.0d0*pi*(xv(i)-(xmax+xmin)/2.0d0)/(xmax-xmin))) &
+                     & *(1.0+cos(2.0d0*pi*(yv(j)-(ymax+ymin)/2.0d0)/(ymax-ymin)))
+!                     & *dexp( - (xv(i) - (x1max+x1min)/2.0d0)**2/(0.1**2) )
+!                     & *(+cos(2.0d0*pi*(xv(i)-(x1max+x1min)/2.0d0)/(x1max-x1min)))
       enddo
       enddo
       enddo
@@ -985,10 +996,12 @@ integer, save :: nsnap
         write(unitsnap) time
         write(unitsnap) nx
         write(unitsnap) ny
-        write(unitsnap) NVAR
+        write(unitsnap) 5
+        write(unitsnap) NVAR - 5
         write(unitsnap) xv(is:ie)
         write(unitsnap) yv(js:je)
-        write(unitsnap) real(Q(1:NVAR,is:ie,js:je,ks:ke)) ! single precision
+        write(unitsnap) real(Q(1:5,is:ie,js:je,ks:ke)) ! single precision
+        write(unitsnap) real(Q(6:NVAR,is:ie,js:je,ks:ke)) ! single precision
         close(unitsnap)
     else 
         filename = trim(dirname)//"/snap"//trim(filename)//".dat"
@@ -1035,16 +1048,22 @@ implicit none
 real(8), intent(in) :: xv(:), yv(:), Q(:,:,:,:)
 real(8), intent(out) :: phys_evo(:)
 integer::i,j,k
+real(8) :: dvx, er_divB 
 
+      dvx = 0.0d0
+      er_divB = 0.0d0
       do k=ks,ke
       do j=js,je
       do i=is,ie
-
+           dvx = dvx + Q(IVX,i,j,k)**2
+           er_divB = er_divB + ( Q(IBX,i+1,j,k) - Q(IBX,i-1,j,k) &
+                               + Q(IBY,i,j+1,k) - Q(IBY,i,j-1,k) )**2 &
+                       /( Q(IBX,i,j,k)**2 + Q(IBY,i,j,k)**2 )
       enddo
       enddo
       enddo
-      phys_evo(1) = 0.0d0
-      phys_evo(2) = 0.0d0
+      phys_evo(1) = sqrt(dvx/dble(nx*ny))
+      phys_evo(2) = sqrt(er_divB/dble(nx*ny))
       
 return
 end subroutine
