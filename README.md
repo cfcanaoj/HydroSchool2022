@@ -7,3 +7,9 @@
   - DaiWoodward2
   - AlfvenWave
 - multiD
+  - BlastWave
+  - AlfvenWave
+  - ShockTubeRot
+  - KelvinHelmholtz
+  - RayleighTaylor
+  - DecayingTurbulence
