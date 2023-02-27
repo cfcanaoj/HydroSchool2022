@@ -36,7 +36,7 @@ real(8),dimension(nxtot,NVAR) :: F ! numerical flux
 
 
 ! output 
-character(20),parameter::dirname="lax" ! directory name
+character(20),parameter::dirname="hll" ! directory name
 
 ! snapshot
 integer, parameter :: unitsnap = 17

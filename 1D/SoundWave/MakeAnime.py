@@ -53,7 +53,7 @@ for istep in range(nmin,nmax+1):
     pg10, = ax[1].plot(x, vel, 'o-',c="r",label="numerical")
     pg11, = ax[1].plot(x, 1e-5*np.sin(2.0*np.pi*(x-time)), '-',c="b",label="exact")
     pg20, = ax[2].plot(x, pre-1.0/gam, 'o-',c="r",label="numerical")
-    pg21, = ax[1].plot(x, 1e-5*np.sin(2.0*np.pi*(x-time)), '-',c="b",label="exact")
+    pg21, = ax[2].plot(x, 1e-5*np.sin(2.0*np.pi*(x-time)), '-',c="b",label="exact")
 
     pg3 = ax[0].text(0,amp*1.15,r"$\mathrm{time} = %.2f$"%(time),horizontalalignment="center")
 
@@ -70,5 +70,5 @@ ani = ArtistAnimation(fig, frames, interval=50)
 
 # mp4 画像として保存する。
 ani.save(dirname + "/pyanime.mp4", writer="imagemagick")
-#plt.show()
+plt.show()
 #plt.close()
