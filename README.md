@@ -1,14 +1,9 @@
 # HydroSchool2022
-- acoustic wave
-- shock tube
-- RT
-- KH
-- Alfven
-- Magnetic RT
-- Magnetic KH
-- OT
-
-# Cheat sheets
-    
-    git clone git@github.com:cfcanaoj/HydroSchool2022 test
-    
+- 1D
+  - Sod
+  - AcousticWave
+  - BrioWu
+  - DaiWoodward1
+  - DaiWoodward2
+  - AlfvenWave
+- multiD
