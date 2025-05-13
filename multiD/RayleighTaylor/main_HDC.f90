@@ -96,7 +96,7 @@ real(8) :: stime
       write(6,*) "setup grids and initial condition"
       call GenerateGrid(xf, xv, yf, yv, zf, zv)
       call GenerateProblem(xv, yv, zv, Q)
-      call PrIMYConsrv(Q, U)
+      call Prim2Consv(Q, U)
       call BoundaryCondition(xf,yf,Q)
       call Output( .TRUE., flag_binary, dirname, xf, xv, yf, yv, Q )
 
@@ -113,12 +113,12 @@ real(8) :: stime
 
          call NumericalFlux( Q, F, G, H )
          call UpdateConsv( 0.5d0*dt, xf, yf, zf, F, G, H, Q, U, U )
-         call Consrv2Prim( U, Q )
+         call Consv2Prim( U, Q )
          call BoundaryCondition(xf, yf,Q )
 
          call NumericalFlux( Q, F, G, H )
          call UpdateConsv( dt, xf, yf, zf, F, G, H, Q, Uo, U )
-         call Consrv2Prim( U, Q )
+         call Consv2Prim( U, Q )
          call BoundaryCondition( xf, yf, Q )
 
          time=time+dt
@@ -281,7 +281,7 @@ end subroutine BoundaryCondition
 !       Input  : Q
 !       Output : U
 !-------------------------------------------------------------------
-subroutine PrIMYConsrv(Q, U)
+subroutine Prim2Consv(Q, U)
 implicit none
 real(8), intent(in) :: Q(:,:,:,:)
 real(8), intent(out) :: U(:,:,:,:)
@@ -308,13 +308,13 @@ integer::i,j,k
       enddo
       
 return
-end subroutine PrIMYConsrv
+end subroutine Prim2Consv
 !-------------------------------------------------------------------
 !       Conservative variables ===> Primitive variables
 !       Input  : U
 !       Output : Q
 !-------------------------------------------------------------------
-subroutine Consrv2Prim( U, Q )
+subroutine Consv2Prim( U, Q )
 implicit none
 real(8), intent(in) :: U(:,:,:,:)
 real(8), intent(out) :: Q(:,:,:,:)
@@ -334,7 +334,7 @@ real(8) :: stime
            Q(IVZ,i,j,k) = U(IMZ,i,j,k)*inv_d
            Q(IPR,i,j,k) = ( U(IEN,i,j,k) &
                         - 0.5d0*(U(IMX,i,j,k)**2 + U(IMY,i,j,k)**2 + U(IMZ,i,j,k)**2)*inv_d  &
-                        - 0.5d0*(U(IBX,i,j,k)**2 + Q(IBY,i,j,k)**2 + Q(IBZ,i,j,k)**2) )*(gam-1.0d0)
+                        - 0.5d0*(U(IBX,i,j,k)**2 + U(IBY,i,j,k)**2 + U(IBZ,i,j,k)**2) )*(gam-1.0d0)
            Q(IBX,i,j,k) = U(IBX,i,j,k)
            Q(IBY,i,j,k) = U(IBY,i,j,k)
            Q(IBZ,i,j,k) = U(IBZ,i,j,k)
@@ -346,7 +346,7 @@ real(8) :: stime
 !      print*,omp_get_wtime() - stime
 
 return
-end subroutine Consrv2Prim
+end subroutine Consv2Prim
 !-------------------------------------------------------------------
 !       determine dt 
 !-------------------------------------------------------------------

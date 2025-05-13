@@ -93,7 +93,7 @@ integer :: i,j,k
     write(6,*) "setup grids and initial condition"
     call GenerateGrid(xf, xv, yf, yv, zf, zv)
     call GenerateProblem(xv, yv, zv, Q, Bs, Bc)
-    call PrIMYConsrv(Q, Bc, U)
+    call Prim2Consv(Q, Bc, U)
     call BoundaryCondition( Q, Bs, Bc )
     call Output( .TRUE., flag_binary, dirname, xf, xv, yf, yv, Q, Bc )
 
@@ -401,7 +401,7 @@ end subroutine BoundaryCondition
 !       Input  : Q
 !       Output : U
 !-------------------------------------------------------------------
-subroutine PrIMYConsrv(Q, Bc, U)
+subroutine Prim2Consv(Q, Bc, U)
 implicit none
 real(8), intent(in) :: Q(:,:,:,:)
 real(8), intent(in) :: Bc(:,:,:,:)
@@ -425,7 +425,7 @@ integer::i,j,k
         enddo
       
 return
-end subroutine PrIMYConsrv
+end subroutine Prim2Consv
 !-------------------------------------------------------------------
 !       Conservative variables ===> Primitive variables
 !       Input  : U
