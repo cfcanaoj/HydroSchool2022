@@ -34,7 +34,7 @@ $\gamma=1.4$を採用している。
 
 厳密解は以下の図のようになる。
 <p align="center">
-  <img src="./figure/sod.png" width="300">
+  <img src="./figures/sod.png" width="300">
 </p>
 
 ## ディレクトリ内の構造
