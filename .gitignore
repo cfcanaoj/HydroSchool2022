@@ -6,4 +6,6 @@
 !*.f90
 !*.py
 !*.sh
-!figures/*.png
+
+!figures/
+!figures/*
