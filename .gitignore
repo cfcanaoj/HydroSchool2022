@@ -1,0 +1,11 @@
+*
+!*/
+
+!.gitignore
+!README.md
+!*.f90
+!*.py
+!*.sh
+
+!**/figures/
+!**/figures/*.png
