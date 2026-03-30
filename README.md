@@ -7,21 +7,11 @@
 
 ## 収録内容（ディレクトリ）
 
-- `1D/` : 1次元テスト
-  - `Sod`（衝撃波管）
-  - `AcousticWave`（音波）
-  - `BrioWu`（MHD衝撃波管）
-  - `DaiWoodward1`, `DaiWoodward2`
-  - `AlfvenWave`（アルヴェン波）
-- `multiD/` : 多次元テスト
-  - `BlastWave`
-  - `AlfvenWave`
-  - `ShockTubeRot`（回転座標/斜め衝撃波チューブ等）
-  - `KelvinHelmholtz`（KH不安定）
-  - `RayleighTaylor`（RT不安定）
-  - `DecayingTurbulence`（減衰乱流）
-- `Radiation/` : 輻射輸送
-- `vis3D/` : 可視化補助（3D/多次元データ向け）
+- [`MHD/`](./MHD) : 流体・磁気流体
+- [`SRMHD/`](./SRMHD) : 流体・磁気流体
+- [`vis3D/`](./vis3D) : 可視化補助（3D/多次元データ向け）
+- [`Radiation/`](./Radiation) : 輻射輸送
+- [`GPU/`](./GPU) : GPU移植
 - `documents/` : 講義・実習用の資料
 
 ---
