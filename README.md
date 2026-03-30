@@ -8,7 +8,7 @@
 ## 収録内容（ディレクトリ）
 
 - [`MHD/`](./MHD) : 流体・磁気流体
-- [`SRMHD/`](./SRMHD) : 流体・磁気流体
+- [`SRMHD/`](./SRMHD) : 特殊相対論的磁気流体
 - [`vis3D/`](./vis3D) : 可視化補助（3D/多次元データ向け）
 - [`Radiation/`](./Radiation) : 輻射輸送
 - [`GPU/`](./GPU) : GPU移植
